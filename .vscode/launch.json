@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:VietKey}",
+      "name": "Debug VietKey",
+      "target": "VietKey",
+      "configuration": "debug",
+      "preLaunchTask": "swift: Build Debug VietKey"
+    },
+    {
+      "type": "swift",
+      "request": "launch",
+      "args": [],
+      "cwd": "${workspaceFolder:VietKey}",
+      "name": "Release VietKey",
+      "target": "VietKey",
+      "configuration": "release",
+      "preLaunchTask": "swift: Build Release VietKey"
+    }
+  ]
+}
