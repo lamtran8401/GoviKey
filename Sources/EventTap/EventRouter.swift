@@ -1,5 +1,5 @@
 // EventRouter.swift
-// VietKey EventTap
+// GoviKey EventTap
 //
 // Main event callback dispatcher. Routes keystrokes to the Vietnamese engine
 // and sends output via KeyEventSender.
@@ -114,7 +114,9 @@ public final class InputController {
         let previousModifiers = lastModifierFlags & relevantMask
 
         if currentModifiers > previousModifiers {
-            // Pressing more modifiers — update peak state
+            // Pressing more modifiers — update peak state.
+            // Reset the flag so normal typing before this chord doesn't block the hotkey.
+            keyPressedWhileModifiersHeld = false
             lastModifierFlags = flags
         } else if currentModifiers < previousModifiers {
             // Releasing modifiers — check if peak matched target combo

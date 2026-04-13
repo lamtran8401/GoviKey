@@ -3,12 +3,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "VietKey",
+    name: "GoviKey",
     platforms: [.macOS(.v13)],
     products: [
         .library(name: "Engine", targets: ["Engine"]),
         .library(name: "EventTap", targets: ["EventTap"]),
-        .executable(name: "VietKey", targets: ["App"]),
+        .executable(name: "GoviKey", targets: ["App"]),
     ],
     targets: [
         .target(

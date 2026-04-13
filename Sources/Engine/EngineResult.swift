@@ -1,5 +1,5 @@
 // EngineResult.swift
-// VietKey Engine
+// GoviKey Engine
 //
 // Value type returned by the engine after processing each keystroke.
 

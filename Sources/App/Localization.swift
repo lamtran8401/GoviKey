@@ -1,5 +1,5 @@
 // Localization.swift
-// VietKey App
+// GoviKey App
 //
 // Simple string localization for Vietnamese (default) and English.
 // Uses a dictionary map for cleaner readability.
@@ -52,7 +52,7 @@ enum L {
     static var spellingCheck: String      { loc("Kiểm tra chính tả", "Spelling Check") }
     static var modernOrthography: String  { loc("Chính tả mới (oà, uý)", "Modern Orthography") }
     static var gameMode: String           { "Game Mode" }
-    static var aboutVietKey: String       { loc("Về VietKey", "About VietKey") }
+    static var aboutGoviKey: String       { loc("Về GoviKey", "About GoviKey") }
 
     // MARK: - Sound & Shortcuts
 
@@ -66,16 +66,16 @@ enum L {
     static var modifierOnlyHint: String   { loc("Bấm và thả tổ hợp phím để chuyển đổi", "Press and release modifier combo to switch") }
     static var pressKey: String           { loc("Nhấn phím...", "Press a key...") }
     static var settings: String           { loc("Cài đặt...", "Settings...") }
-    static var quitVietKey: String        { loc("Thoát VietKey", "Quit VietKey") }
+    static var quitGoviKey: String        { loc("Thoát GoviKey", "Quit GoviKey") }
 
     // MARK: - Status Bar
 
-    static var tooltipVietnamese: String  { loc("VietKey - Tiếng Việt", "VietKey - Vietnamese") }
-    static var tooltipEnglish: String     { loc("VietKey - Tiếng Anh", "VietKey - English") }
+    static var tooltipVietnamese: String  { loc("GoviKey - Tiếng Việt", "GoviKey - Vietnamese") }
+    static var tooltipEnglish: String     { loc("GoviKey - Tiếng Anh", "GoviKey - English") }
 
     // MARK: - Settings Window
 
-    static var settingsTitle: String      { loc("Cài đặt VietKey", "VietKey Settings") }
+    static var settingsTitle: String      { loc("Cài đặt GoviKey", "GoviKey Settings") }
     static var general: String            { loc("Chung", "General") }
     static var input: String              { loc("Nhập liệu", "Input") }
     static var apps: String               { loc("Ứng dụng", "Apps") }
@@ -86,7 +86,7 @@ enum L {
     static var aboutSummary: String       { loc("Phiên bản, thông tin", "Version, info") }
     static var language: String           { loc("Ngôn ngữ", "Language") }
     static var appLanguage: String        { loc("Ngôn ngữ ứng dụng", "App Language") }
-    static var appLanguageDescription: String { loc("Ngôn ngữ hiển thị của VietKey", "Display language for VietKey") }
+    static var appLanguageDescription: String { loc("Ngôn ngữ hiển thị của GoviKey", "Display language for GoviKey") }
     static var gameModeDescription: String { loc("Độ trễ tối thiểu, bỏ qua kiểm tra Spotlight/AX", "Minimal latency, skips Spotlight/AX checks") }
     static var inputMethodLabel: String   { loc("Phương pháp", "Method") }
 
@@ -121,10 +121,10 @@ enum L {
 
     // MARK: - Accessibility Alert
 
-    static var accessibilityTitle: String { loc("VietKey cần quyền Accessibility", "VietKey Needs Accessibility Permission") }
+    static var accessibilityTitle: String { loc("GoviKey cần quyền Accessibility", "GoviKey Needs Accessibility Permission") }
     static var accessibilityMessage: String { loc(
-        "VietKey cần quyền Accessibility để nhận phím gõ tiếng Việt.\n\nVui lòng cấp quyền trong Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Accessibility, sau đó khởi động lại VietKey.",
-        "VietKey needs Accessibility access to intercept keystrokes for Vietnamese typing.\n\nPlease grant access in System Settings > Privacy & Security > Accessibility, then restart VietKey."
+        "GoviKey cần quyền Accessibility để nhận phím gõ tiếng Việt.\n\nVui lòng cấp quyền trong Cài đặt hệ thống > Quyền riêng tư & Bảo mật > Accessibility, sau đó khởi động lại GoviKey.",
+        "GoviKey needs Accessibility access to intercept keystrokes for Vietnamese typing.\n\nPlease grant access in System Settings > Privacy & Security > Accessibility, then restart GoviKey."
     ) }
     static var openSystemSettings: String { loc("Mở Cài đặt hệ thống", "Open System Settings") }
     static var quit: String               { loc("Thoát", "Quit") }

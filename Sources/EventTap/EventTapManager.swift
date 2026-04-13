@@ -1,5 +1,5 @@
 // EventTapManager.swift
-// VietKey EventTap
+// GoviKey EventTap
 //
 // Creates and manages the CGEventTap lifecycle.
 // Tries HID-level tap first (better for games/fullscreen), falls back to session tap.

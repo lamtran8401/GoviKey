@@ -1,5 +1,5 @@
 // VietnameseEngine.swift
-// VietKey Engine
+// GoviKey Engine
 //
 // Core Vietnamese input processing engine.
 // Ported from PHTV's PHTVEngineCore.swift with clean API (EngineResult value type,

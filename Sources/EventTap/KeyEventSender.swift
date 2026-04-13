@@ -1,5 +1,5 @@
 // KeyEventSender.swift
-// VietKey EventTap
+// GoviKey EventTap
 //
 // Sends synthetic key events (backspaces and Unicode characters) via CGEvent.
 

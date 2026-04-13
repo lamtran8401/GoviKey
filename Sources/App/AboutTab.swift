@@ -1,5 +1,5 @@
 // AboutTab.swift
-// VietKey App
+// GoviKey App
 //
 // About tab: app name, version, technical info.
 
@@ -10,7 +10,7 @@ struct AboutTab: View {
         VStack(spacing: 20) {
             Spacer()
 
-            Text("VietKey")
+            Text("GoviKey")
                 .font(.system(size: 32, weight: .bold, design: .rounded))
                 .foregroundColor(Color(white: 0.15))
 

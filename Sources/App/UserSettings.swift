@@ -1,5 +1,5 @@
 // UserSettings.swift
-// VietKey App
+// GoviKey App
 //
 // Centralized user preferences backed by UserDefaults.
 // Observable object that syncs to EngineConfig and InputController.

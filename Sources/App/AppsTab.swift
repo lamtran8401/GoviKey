@@ -1,5 +1,5 @@
 // AppsTab.swift
-// VietKey App
+// GoviKey App
 //
 // Apps settings tab: custom game bundle ID management.
 

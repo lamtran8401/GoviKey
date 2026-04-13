@@ -1,5 +1,5 @@
 // VietnameseEngine+Mark.swift
-// VietKey Engine
+// GoviKey Engine
 //
 // Tone mark placement (modern/old style) and mark insertion.
 

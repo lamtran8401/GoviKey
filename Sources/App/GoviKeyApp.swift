@@ -1,5 +1,5 @@
-// VietKeyApp.swift
-// VietKey
+// GoviKeyApp.swift
+// GoviKey
 //
 // Menu bar application entry point.
 // Runs as LSUIElement (no dock icon), provides status bar menu.
@@ -10,7 +10,7 @@ import Engine
 import EventTap
 
 @main
-struct VietKeyApp {
+struct GoviKeyApp {
     static func main() {
         let app = NSApplication.shared
         let delegate = AppDelegate()
@@ -138,12 +138,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let settingsItem = NSMenuItem(title: L.settings, action: #selector(openSettings), keyEquivalent: ",")
         menu.addItem(settingsItem)
 
-        let aboutItem = NSMenuItem(title: L.aboutVietKey, action: #selector(openAbout), keyEquivalent: "")
+        let aboutItem = NSMenuItem(title: L.aboutGoviKey, action: #selector(openAbout), keyEquivalent: "")
         menu.addItem(aboutItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        let quitItem = NSMenuItem(title: L.quitVietKey, action: #selector(quitApp), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: L.quitGoviKey, action: #selector(quitApp), keyEquivalent: "q")
         menu.addItem(quitItem)
 
         self.cachedMenu = menu
@@ -273,7 +273,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let hostingController = NSHostingController(rootView: aboutView)
 
         let window = NSWindow(contentViewController: hostingController)
-        window.title = L.aboutVietKey
+        window.title = L.aboutGoviKey
         window.styleMask = [.titled, .closable]
         window.appearance = NSAppearance(named: .aqua)
         window.setContentSize(NSSize(width: 320, height: 300))

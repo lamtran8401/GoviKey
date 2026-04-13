@@ -1,5 +1,5 @@
 // VietnameseData.swift
-// VietKey Engine
+// GoviKey Engine
 //
 // Core constants, key codes, bit masks, and Vietnamese data tables.
 

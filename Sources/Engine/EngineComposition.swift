@@ -1,5 +1,5 @@
 // VietnameseEngine+Composition.swift
-// VietKey Engine
+// GoviKey Engine
 //
 // Character composition: insert D, AOE, W, standalone, elongated vowels,
 // quick telex, quick consonant, restore operations, main key handling.
@@ -54,7 +54,7 @@ extension VietnameseEngine {
                     hCode = EngineAction.restore.rawValue
                     typingWord[ii] &= ~TONE_MASK
                     hData[idx - 1 - ii] = get(typingWord[ii])
-                    if data != KEY_O { tempDisableKey = true }
+                    tempDisableKey = true
                 } else {
                     typingWord[ii] |= TONE_MASK
                     if !isKeyD(data) { typingWord[ii] &= ~TONEW_MASK }
@@ -237,10 +237,11 @@ extension VietnameseEngine {
         let runLength = idx - runStart
         let trailing = typingWord[idx - 1]
 
+        // A single toned A/E vowel (with any diacritic or not) should cycle via insertAOE,
+        // not be raw-appended as elongation. Let the AOE handler manage cycling.
         if (data == KEY_A || data == KEY_E) &&
            runLength == 1 &&
-           (trailing & MARK_MASK) != 0 &&
-           (trailing & (TONE_MASK | TONEW_MASK)) == 0 {
+           (trailing & MARK_MASK) != 0 {
             return false
         }
 
@@ -553,8 +554,6 @@ extension VietnameseEngine {
             }
             return
         }
-
-        if tryExpandMarkedAOEElongation(data, isCaps) { return }
 
         if shouldAppendRawElongatedVowel(data) {
             insertKey(data, isCaps)

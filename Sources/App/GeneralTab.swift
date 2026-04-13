@@ -1,5 +1,5 @@
 // GeneralTab.swift
-// VietKey App
+// GoviKey App
 //
 // General settings tab: language, game mode, shortcuts, switch sound.
 

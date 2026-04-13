@@ -1,5 +1,5 @@
 // SpotlightDetector.swift
-// VietKey EventTap
+// GoviKey EventTap
 //
 // Detects Spotlight, search bars, and other search-field contexts via Accessibility API.
 // Uses AXRole/AXSubrole/AXDescription/AXPlaceholderValue to identify search fields.

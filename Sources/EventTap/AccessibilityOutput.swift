@@ -1,5 +1,5 @@
 // AccessibilityOutput.swift
-// VietKey EventTap
+// GoviKey EventTap
 //
 // AX API-based text replacement for Spotlight and search fields.
 // Reads current text value + caret position, calculates replacement range,

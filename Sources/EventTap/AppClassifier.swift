@@ -1,5 +1,5 @@
 // AppClassifier.swift
-// VietKey EventTap
+// GoviKey EventTap
 //
 // App detection and classification by bundle ID.
 // Uses BundlePatternSet for exact + wildcard prefix matching.

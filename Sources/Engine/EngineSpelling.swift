@@ -1,5 +1,5 @@
 // VietnameseEngine+Spelling.swift
-// VietKey Engine
+// GoviKey Engine
 //
 // Spelling validation and grammar normalization.
 

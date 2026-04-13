@@ -1,5 +1,5 @@
 // SettingsView.swift
-// VietKey App
+// GoviKey App
 //
 // Settings window layout: tab enum, sidebar, content router.
 

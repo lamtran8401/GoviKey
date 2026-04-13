@@ -1,5 +1,5 @@
 // InputTab.swift
-// VietKey App
+// GoviKey App
 //
 // Input settings tab: character encoding, input method, options, spelling.
 

@@ -1,5 +1,5 @@
 // VietnameseEngineTests.swift
-// VietKey Engine Tests
+// GoviKey Engine Tests
 
 import XCTest
 @testable import Engine
@@ -249,18 +249,108 @@ final class VietnameseEngineTests: XCTestCase {
     }
 
     func testTelexDToggle() {
-        // "dd" -> đ, then "d" again should remove
+        // "dd" -> đ, then "d" again should restore to "dd" (iOS behavior)
         engine.resetSession()
         _ = type("d")
         _ = type("d")
         let output1 = composedOutput()
         XCTAssertEqual(output1, "đ")
 
-        _ = type("d")
+        let result = type("d")
+        // Restore: backspace "đ" (1), output "dd" (2)
+        XCTAssertEqual(result.action, .restore)
+        XCTAssertEqual(result.backspaceCount, 1)
+        XCTAssertEqual(result.newCharCount, 2)
         let output2 = composedOutput()
-        // After third d, the đ should be restored to d, and new d added
-        // This tests the toggle behavior
-        XCTAssertTrue(engine.idx >= 1)
+        XCTAssertEqual(output2, "dd")
+    }
+
+    // MARK: - iOS-style restore tests
+
+    func testTelexCircumflexARestore() {
+        // "aa" -> â, then "a" again -> "aa"
+        engine.resetSession()
+        _ = type("aa")
+        XCTAssertEqual(composedOutput(), "â")
+
+        let result = type("a")
+        XCTAssertEqual(result.action, .restore)
+        XCTAssertEqual(result.backspaceCount, 1)
+        XCTAssertEqual(result.newCharCount, 2)
+        XCTAssertEqual(composedOutput(), "aa")
+    }
+
+    func testTelexCircumflexERestore() {
+        // "ee" -> ê, then "e" again -> "ee"
+        engine.resetSession()
+        _ = type("ee")
+        XCTAssertEqual(composedOutput(), "ê")
+
+        let result = type("e")
+        XCTAssertEqual(result.action, .restore)
+        XCTAssertEqual(result.backspaceCount, 1)
+        XCTAssertEqual(result.newCharCount, 2)
+        XCTAssertEqual(composedOutput(), "ee")
+    }
+
+    func testTelexCircumflexORestore() {
+        // "oo" -> ô, then "o" again -> "oo"
+        engine.resetSession()
+        _ = type("oo")
+        XCTAssertEqual(composedOutput(), "ô")
+
+        let result = type("o")
+        XCTAssertEqual(result.action, .restore)
+        XCTAssertEqual(result.backspaceCount, 1)
+        XCTAssertEqual(result.newCharCount, 2)
+        XCTAssertEqual(composedOutput(), "oo")
+    }
+
+    func testTelexHornURestore() {
+        // "uw" -> ư, then "w" again -> "uw"
+        engine.resetSession()
+        _ = type("u")
+        _ = type("w")
+        XCTAssertEqual(composedOutput(), "ư")
+
+        let result = type("w")
+        XCTAssertEqual(result.action, .restore)
+        XCTAssertEqual(result.backspaceCount, 1)
+        XCTAssertEqual(result.newCharCount, 2)
+        XCTAssertEqual(composedOutput(), "uw")
+    }
+
+    func testTelexCircumflexPlusToneThenSameKey() {
+        // "aas" -> ấ, then "a" -> "áa" (restore circumflex, keep tone, append new a)
+        engine.resetSession()
+        _ = type("aas")
+        XCTAssertEqual(composedOutput(), "ấ")
+
+        let result = type("a")
+        XCTAssertEqual(result.action, .restore)
+        XCTAssertEqual(result.backspaceCount, 1)
+        XCTAssertEqual(result.newCharCount, 2)
+        XCTAssertEqual(composedOutput(), "áa")
+    }
+
+    func testTelexBrevePlusToneCyclesToCircumflex() {
+        // "aws" -> ắ, then "a" -> "ấ" (breve cycles to circumflex, tone preserved)
+        engine.resetSession()
+        _ = type("aws")
+        XCTAssertEqual(composedOutput(), "ắ")
+
+        let result = type("a")
+        XCTAssertEqual(result.action, .willProcess)
+        XCTAssertEqual(composedOutput(), "ấ")
+    }
+
+    func testTelexRestoreDoesNotRecycleO() {
+        // After "oo" -> ô -> restore to "oo", a 4th "o" should just append raw (not re-transform)
+        engine.resetSession()
+        _ = type("ooo") // restore to "oo"
+        XCTAssertEqual(composedOutput(), "oo")
+        _ = type("o")   // 4th o: tempDisableKey=true, should be raw
+        XCTAssertEqual(composedOutput(), "ooo")
     }
 
     // MARK: - VNI Mode Tests

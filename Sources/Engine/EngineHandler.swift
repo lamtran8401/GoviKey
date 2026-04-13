@@ -1,5 +1,5 @@
 // VietnameseEngine+Handler.swift
-// VietKey Engine
+// GoviKey Engine
 //
 // Event handlers: main event dispatch, word break, space, delete, main flow.
 
@@ -238,7 +238,19 @@ extension VietnameseEngine {
             if hCode == EngineAction.doNothing.rawValue { checkGrammar(deltaBackSpace: -1) } else { checkGrammar(deltaBackSpace: 0) }
         }
 
-        if hCode == EngineAction.restore.rawValue { insertKey(data, isCaps) }
+        if hCode == EngineAction.restore.rawValue {
+            let prevHNCC = hNCC
+            insertKey(data, isCaps)
+            // Include the newly typed key in the output so the display matches the buffer.
+            // e.g. 'đ' + 'd' → restore outputs 'dd' (not just 'd'), matching iOS Telex behavior.
+            if prevHNCC < hData.count {
+                for j in stride(from: prevHNCC - 1, through: 0, by: -1) {
+                    hData[j + 1] = hData[j]
+                }
+                hData[0] = get(typingWord[idx - 1])
+                hNCC = prevHNCC + 1
+            }
+        }
 
         if isBracketKey(data) && (isBracketKey(UInt16(hData[0] & CHAR_MASK)) || false) {
             if idx - (hCode == EngineAction.willProcess.rawValue ? hBPC : 0) > 0 {

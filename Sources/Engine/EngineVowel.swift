@@ -1,5 +1,5 @@
 // VietnameseEngine+Vowel.swift
-// VietKey Engine
+// GoviKey Engine
 //
 // Vowel operations, character lookup, mark validation.
 

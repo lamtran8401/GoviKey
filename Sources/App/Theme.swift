@@ -1,5 +1,5 @@
 // Theme.swift
-// VietKey App
+// GoviKey App
 //
 // Design tokens and reusable style modifiers.
 // Glassmorphism-inspired: frosted cards, soft shadows, large radii.
