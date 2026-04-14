@@ -612,6 +612,29 @@ final class TelexSpellingTests: EngineTestBase {
         XCTAssertFalse(engine.tempDisableKey)
     }
 
+    // MARK: Unrecognized consonant start blocks tone marks
+
+    /// "featu" + "r": 'f' is not in vnConsonantTable → unrecognizedConsonantStart = true
+    /// → 'r' (hỏi tone) must be blocked → output stays "featur", not "featủ".
+    func testEnglishWordBlocksToneMark() {
+        engine.config.checkSpelling = true
+        type("featu")
+        XCTAssertTrue(engine.unrecognizedConsonantStart, "English word start should set unrecognizedConsonantStart")
+        let r = type("r")
+        XCTAssertEqual(r.action, .doNothing, "Tone mark 'r' must be blocked for English words")
+        XCTAssertEqual(output(), "featur")
+    }
+
+    /// Valid Vietnamese word — tone mark must still work normally.
+    func testVietnameseWordAllowsToneMark() {
+        engine.config.checkSpelling = true
+        type("vie")
+        XCTAssertFalse(engine.unrecognizedConsonantStart, "Valid Vietnamese consonant should not set flag")
+        type("t")
+        let r = type("j")   // nặng → ệ
+        XCTAssertNotEqual(r.action, .doNothing, "Tone mark must apply for valid Vietnamese words")
+    }
+
     // MARK: Restore on Space includes trailing Space
 
     /// "uwhen" + Space: spell check triggers restore → output must include trailing Space.
@@ -1000,5 +1023,87 @@ final class VNIWordTests: EngineTestBase {
         type("o")
         press(KEY_1)   // sắc → ó
         XCTAssertEqual(output(), "đó")
+    }
+}
+
+// MARK: - W Key As Letter Tests
+
+final class WKeyAsLetterTests: EngineTestBase {
+
+    override func setUp() {
+        super.setUp()
+        engine.config.wKeyAsLetter = true
+        engine.resetSession()
+    }
+
+    func testWAloneProducesUHorn() {
+        // w → ư (standalone)
+        let r = type("w")
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ư")
+    }
+
+    // MARK: Feature ON — w at start → ư; consonant+w and vowel modifier unchanged
+
+    func testWAloneGivesUHornWhenOn() {
+        type("w")
+        XCTAssertEqual(output(), "ư")
+    }
+
+    func testOWGivesOHornWhenOn() {
+        type("ow")
+        XCTAssertEqual(output(), "ơ")
+    }
+
+    func testAWGivesABreveWhenOn() {
+        type("aw")
+        XCTAssertEqual(output(), "ă")
+    }
+
+    // MARK: Feature OFF — w alone → plain 'w'; consonant+w still → ư; vowel modifier unchanged
+
+    func testWAloneGivesPlainWWhenOff() {
+        engine.config.wKeyAsLetter = false
+        engine.resetSession()
+        type("w")
+        XCTAssertEqual(output(), "w")
+    }
+
+    func testOWGivesOHornWhenOff() {
+        engine.config.wKeyAsLetter = false
+        engine.resetSession()
+        type("ow")
+        XCTAssertEqual(output(), "ơ")
+    }
+
+    func testAWGivesABreveWhenOff() {
+        engine.config.wKeyAsLetter = false
+        engine.resetSession()
+        type("aw")
+        XCTAssertEqual(output(), "ă")
+    }
+
+    // MARK: Consonant + w always → ư (same for ON and OFF)
+
+    func testConsonantWAlwaysGivesUHorn() {
+        // lw → lư regardless of feature flag
+        type("lw")
+        XCTAssertEqual(output(), "lư", "Feature ON: lw → lư")
+
+        engine.config.wKeyAsLetter = false
+        engine.resetSession()
+        type("lw")
+        XCTAssertEqual(output(), "lư", "Feature OFF: lw → lư")
+    }
+
+    func testLongConsonantWAlwaysGivesUHorn() {
+        // nghw → nghư regardless of feature flag
+        type("nghw")
+        XCTAssertEqual(output(), "nghư", "Feature ON: nghw → nghư")
+
+        engine.config.wKeyAsLetter = false
+        engine.resetSession()
+        type("nghw")
+        XCTAssertEqual(output(), "nghư", "Feature OFF: nghw → nghư")
     }
 }

@@ -229,23 +229,20 @@ extension VietnameseEngine {
             }
         }
 
-        // Decision
-        let quickTelexEnabled = config.quickTelex
+        // Block tone marks on words with unrecognized consonant starts (English words).
+        // e.g. "featur" should not become "featủ" — r is blocked as a tone key.
+        let blockMarkForUnrecognizedStart = unrecognizedConsonantStart && isMarkKey(data)
 
-        if !isSpecialKey(data) || (tempDisableKey && !allowSpecialDespiteTempDisable) {
-            if quickTelexEnabled && isQuickTelexKey(data) {
-                handleQuickTelex(data, isCaps); return
-            } else {
-                hCode = EngineAction.doNothing.rawValue; hBPC = 0; hNCC = 0; hExt = 3
-                insertKey(data, isCaps)
-            }
+        if !isSpecialKey(data) || (tempDisableKey && !allowSpecialDespiteTempDisable) || blockMarkForUnrecognizedStart {
+            hCode = EngineAction.doNothing.rawValue; hBPC = 0; hNCC = 0; hExt = 3
+            insertKey(data, isCaps)
         } else {
             hCode = EngineAction.doNothing.rawValue; hBPC = 0; hNCC = 0; hExt = 3
             handleMainKey(data, isCaps)
         }
 
         // Post
-        if !config.freeMark && !isKeyD(data) {
+        if !isKeyD(data) {
             if hCode == EngineAction.doNothing.rawValue { checkGrammar(deltaBackSpace: -1) } else { checkGrammar(deltaBackSpace: 0) }
         }
 

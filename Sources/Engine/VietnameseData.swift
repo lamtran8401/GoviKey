@@ -551,16 +551,6 @@ let vnQuickEndConsonant: [UInt16: [UInt16]] = [
 ]
 
 /// Quick Telex expansions (cc→ch, gg→gi, etc.)
-let vnQuickTelex: [UInt32: [UInt16]] = [
-    UInt32(KEY_C): [KEY_C, KEY_H],
-    UInt32(KEY_G): [KEY_G, KEY_I],
-    UInt32(KEY_K): [KEY_K, KEY_H],
-    UInt32(KEY_N): [KEY_N, KEY_G],
-    UInt32(KEY_Q): [KEY_Q, KEY_U],
-    UInt32(KEY_P): [KEY_P, KEY_H],
-    UInt32(KEY_T): [KEY_T, KEY_H],
-    UInt32(KEY_U): [KEY_U, KEY_U],
-]
 
 /// Character encoding types for Vietnamese output
 public enum CharacterEncoding: Int, CaseIterable, Sendable {

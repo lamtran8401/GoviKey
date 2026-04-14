@@ -22,6 +22,7 @@ extension VietnameseEngine {
             let allowZFWJ = config.allowConsonantZFWJ
             let quickEnd = config.quickEndConsonant
             var j = 0
+            unrecognizedConsonantStart = false
             if isConsonant(chr(0)) {
                 var matched = false
                 for row in vnConsonantTable {
@@ -40,7 +41,7 @@ extension VietnameseEngine {
                     if spellingFlag { continue }
                     matched = true; break
                 }
-                if !matched { j = spellingEndIndex }
+                if !matched { j = spellingEndIndex; unrecognizedConsonantStart = true }
             }
 
             if j == spellingEndIndex { spellingOK = true }

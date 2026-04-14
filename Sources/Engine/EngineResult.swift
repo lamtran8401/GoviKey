@@ -33,11 +33,13 @@ public struct EngineConfig: Sendable {
     public var inputType: InputType = .telex
     public var checkSpelling: Bool = true
     public var useModernOrthography: Bool = true
-    public var quickTelex: Bool = false
     public var quickStartConsonant: Bool = false
     public var quickEndConsonant: Bool = false
     public var allowConsonantZFWJ: Bool = false
-    public var freeMark: Bool = false
+
+    /// When true, the W key always produces ư directly instead of acting as a
+    /// vowel diacritic modifier (ow → ơ, uw → ư, aw → ă).
+    public var wKeyAsLetter: Bool = false
     public var restoreOnEscape: Bool = true
     public var restoreIfWrongSpelling: Bool = true
     public var autoRestoreEnglish: Bool = false

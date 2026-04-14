@@ -28,15 +28,11 @@ final class UserSettings: ObservableObject {
         didSet { notifyChange() }
     }
 
-    @AppStorage("quickTelex") var quickTelex: Bool = false {
-        didSet { notifyChange() }
-    }
-
     @AppStorage("upperCaseFirstChar") var upperCaseFirstChar: Bool = false {
         didSet { notifyChange() }
     }
 
-    @AppStorage("freeMark") var freeMark: Bool = false {
+    @AppStorage("wKeyAsLetter") var wKeyAsLetter: Bool = false {
         didSet { notifyChange() }
     }
 
@@ -147,9 +143,8 @@ final class UserSettings: ObservableObject {
         controller.engine.config.inputType = inputType == "vni" ? .vni : .telex
         controller.engine.config.checkSpelling = checkSpelling
         controller.engine.config.useModernOrthography = useModernOrthography
-        controller.engine.config.quickTelex = quickTelex
         controller.engine.config.upperCaseFirstChar = upperCaseFirstChar
-        controller.engine.config.freeMark = freeMark
+        controller.engine.config.wKeyAsLetter = wKeyAsLetter
         controller.engine.config.quickStartConsonant = quickStartConsonant
         controller.engine.config.quickEndConsonant = quickEndConsonant
         controller.forceGameMode = forceGameMode

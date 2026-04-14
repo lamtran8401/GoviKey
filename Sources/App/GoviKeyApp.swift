@@ -120,9 +120,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         inputSub.addItem(NSMenuItem.separator())
 
-        inputSub.addItem(toggleMenuItem(L.quickTelex, on: settings.quickTelex, action: #selector(toggleQuickTelex)))
         inputSub.addItem(toggleMenuItem(L.autoCapitalize, on: settings.upperCaseFirstChar, action: #selector(toggleUpperCase)))
-        inputSub.addItem(toggleMenuItem(L.freeMark, on: settings.freeMark, action: #selector(toggleFreeMark)))
+        if settings.inputType == "telex" {
+            inputSub.addItem(toggleMenuItem(L.wKeyAsLetter, on: settings.wKeyAsLetter, action: #selector(toggleWKeyAsLetter)))
+        }
         inputSub.addItem(toggleMenuItem(L.quickStartConsonant, on: settings.quickStartConsonant, action: #selector(toggleQuickStartConsonant)))
         inputSub.addItem(toggleMenuItem(L.quickEndConsonant, on: settings.quickEndConsonant, action: #selector(toggleQuickEndConsonant)))
 
@@ -263,18 +264,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         settings.apply(to: inputController)
     }
 
-    @objc private func toggleQuickTelex() {
-        settings.quickTelex.toggle()
-        settings.apply(to: inputController)
-    }
-
     @objc private func toggleUpperCase() {
         settings.upperCaseFirstChar.toggle()
         settings.apply(to: inputController)
     }
 
-    @objc private func toggleFreeMark() {
-        settings.freeMark.toggle()
+    @objc private func toggleWKeyAsLetter() {
+        settings.wKeyAsLetter.toggle()
         settings.apply(to: inputController)
     }
 

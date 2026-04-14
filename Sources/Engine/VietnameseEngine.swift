@@ -41,6 +41,10 @@ public final class VietnameseEngine {
 
     var tempDisableKey: Bool = false
 
+    /// Set when the word starts with a consonant not found in vnConsonantTable
+    /// (e.g. English words: "feature", "wow"). Blocks tone marks on such words.
+    var unrecognizedConsonantStart: Bool = false
+
     // MARK: - Spelling state
 
     var spellingOK: Bool = false
@@ -180,9 +184,6 @@ public final class VietnameseEngine {
         }
     }
 
-    @inline(__always)
-    func isQuickTelexKey(_ k: UInt16) -> Bool { vnQuickTelex[UInt32(k)] != nil }
-
     // MARK: - Result builder
 
     func makeResult() -> EngineResult {
@@ -302,6 +303,7 @@ public final class VietnameseEngine {
         hBPC = 0
         hNCC = 0
         tempDisableKey = false
+        unrecognizedConsonantStart = false
         stateIdx = 0
         skipGrammarMarkNormalizationOnce = false
         spaceCount = 0

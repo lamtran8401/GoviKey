@@ -43,9 +43,8 @@ enum L {
     static var inputMethod: String        { loc("Bộ gõ", "Input Method") }
     static var method: String             { loc("Phương pháp gõ", "Method") }
     static var inputOptions: String       { loc("Tùy chọn nhập", "Input Options") }
-    static var quickTelex: String         { loc("Gõ nhanh (Quick Telex)", "Quick Telex") }
     static var autoCapitalize: String     { loc("Viết hoa đầu câu", "Auto Capitalize") }
-    static var freeMark: String           { loc("Phụ âm Z, F, W, J", "Free Mark (Z, F, W, J)") }
+    static var wKeyAsLetter: String        { loc("Gõ W thành Ư", "W key types Ư") }
     static var quickStartConsonant: String { loc("Phụ âm đầu nhanh", "Quick Start Consonant") }
     static var quickEndConsonant: String  { loc("Phụ âm cuối nhanh", "Quick End Consonant") }
     static var spelling: String           { loc("Chính tả", "Spelling") }
@@ -92,9 +91,8 @@ enum L {
 
     // MARK: - Input Descriptions
 
-    static var quickTelexDescription: String { loc("Mở rộng phụ âm (ví dụ: cc -> ch)", "Expand consonant shortcuts (e.g. cc -> ch)") }
     static var autoCapitalizeDescription: String { loc("Viết hoa ký tự đầu câu", "Uppercase first character of sentences") }
-    static var freeMarkDescription: String { loc("Cho phép dấu thanh không cần nguyên âm", "Allow tone/mark keys without vowels") }
+    static var wKeyAsLetterDescription: String { loc("Chỉ áp dụng Telex. Phím W luôn gõ ra Ư thay vì biến đổi nguyên âm (ow→ơ, uw→ư, aw→ă)", "Telex only. W key always produces Ư instead of modifying vowels (ow→ơ, aw→ă, uw→ư)") }
     static var quickStartConsonantDescription: String { loc("Mở rộng phụ âm đầu nhanh", "Expand start consonant shortcuts") }
     static var quickEndConsonantDescription: String { loc("Mở rộng phụ âm cuối nhanh", "Expand end consonant shortcuts") }
     static var spellingCheckDescription: String { loc("Kiểm tra cấu trúc từ tiếng Việt", "Validate Vietnamese word structure") }

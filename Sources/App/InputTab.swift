@@ -17,9 +17,12 @@ struct InputTab: View {
         (CharacterEncoding(rawValue: settings.charEncoding) ?? .unicode).displayName
     }
 
+    private var isTelex: Bool { settings.inputType != "vni" }
+
     private var optionsCount: Int {
-        [settings.quickTelex, settings.upperCaseFirstChar, settings.freeMark,
-         settings.quickStartConsonant, settings.quickEndConsonant].filter { $0 }.count
+        let wActive = isTelex && settings.wKeyAsLetter
+        return [settings.upperCaseFirstChar, wActive,
+                settings.quickStartConsonant, settings.quickEndConsonant].filter { $0 }.count
     }
 
     var body: some View {
@@ -27,7 +30,7 @@ struct InputTab: View {
             SummaryBanner(items: [
                 ("character.book.closed.fill", L.charEncoding, encodingDisplay),
                 ("keyboard.fill", L.method, methodDisplay),
-                ("slider.horizontal.3", L.inputOptions, "\(optionsCount)/5"),
+                ("slider.horizontal.3", L.inputOptions, "\(optionsCount)/4"),
                 ("checkmark.seal.fill", L.spellingCheck, settings.checkSpelling ? "ON" : "OFF"),
             ])
 
@@ -65,14 +68,6 @@ struct InputTab: View {
             SectionHeader(L.inputOptions)
 
             VStack(spacing: 0) {
-                SettingRow(L.quickTelex, description: L.quickTelexDescription) {
-                    Toggle("", isOn: $settings.quickTelex)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                }
-
-                ThinDivider().padding(.vertical, 12)
-
                 SettingRow(L.autoCapitalize, description: L.autoCapitalizeDescription) {
                     Toggle("", isOn: $settings.upperCaseFirstChar)
                         .labelsHidden()
@@ -81,8 +76,8 @@ struct InputTab: View {
 
                 ThinDivider().padding(.vertical, 12)
 
-                SettingRow(L.freeMark, description: L.freeMarkDescription) {
-                    Toggle("", isOn: $settings.freeMark)
+                SettingRow(L.wKeyAsLetter, description: L.wKeyAsLetterDescription) {
+                    Toggle("", isOn: $settings.wKeyAsLetter)
                         .labelsHidden()
                         .toggleStyle(.switch)
                 }

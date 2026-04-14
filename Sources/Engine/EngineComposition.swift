@@ -381,16 +381,6 @@ extension VietnameseEngine {
         return canFix
     }
 
-    // MARK: - Quick Telex
-
-    func handleQuickTelex(_ data: UInt16, _ isCaps: Bool) {
-        guard let qt = vnQuickTelex[UInt32(data)] else { return }
-        hCode = EngineAction.willProcess.rawValue; hBPC = 1; hNCC = 2
-        hData[1] = UInt32(qt[0]) | (isCaps ? CAPS_MASK : 0)
-        hData[0] = UInt32(qt[1]) | (isCaps ? CAPS_MASK : 0)
-        insertKey(qt[1], isCaps, false)
-    }
-
     // MARK: - Restore Operations
 
     func restoreToRawKeys() -> Bool {
@@ -572,7 +562,12 @@ extension VietnameseEngine {
 
         guard let charset = vnVowelPatterns[keyForAEO] else {
             if data == KEY_W {
-                checkForStandaloneChar(data, isCaps, KEY_U)
+                if idx == 0 && !config.wKeyAsLetter {
+                    insertKey(data, isCaps)
+                } else {
+                    insertKey(data, isCaps, false)
+                    reverseLastStandaloneChar(UInt32(KEY_U), isCaps)
+                }
             } else {
                 insertKey(data, isCaps)
             }
@@ -589,24 +584,33 @@ extension VietnameseEngine {
                 isChanged = true
                 if isKeyDouble(data) {
                     insertAOE(keyForAEO, isCaps)
-                } else if isKeyW(data) {
-                    if config.inputType == .vni {
-                        for j in stride(from: idx - 1, through: 0, by: -1) {
-                            let c = chr(j)
-                            if c == KEY_O || c == KEY_U || c == KEY_A || c == KEY_E { VEI = j; break }
-                        }
-                        let cond7 = data == KEY_7 && chr(VEI) == KEY_A && (VEI - 1 >= 0 ? chr(VEI - 1) != KEY_U : true)
-                        let cond8 = data == KEY_8 && (chr(VEI) == KEY_O || chr(VEI) == KEY_U)
-                        if cond7 || cond8 { break }
-                    }
-                    insertW(keyForAEO, isCaps)
+                } else         if isKeyW(data) {
+            if config.inputType == .vni {
+                for j in stride(from: idx - 1, through: 0, by: -1) {
+                    let c = chr(j)
+                    if c == KEY_O || c == KEY_U || c == KEY_A || c == KEY_E { VEI = j; break }
                 }
+                let cond7 = data == KEY_7 && chr(VEI) == KEY_A && (VEI - 1 >= 0 ? chr(VEI - 1) != KEY_U : true)
+                let cond8 = data == KEY_8 && (chr(VEI) == KEY_O || chr(VEI) == KEY_U)
+                if cond7 || cond8 { break }
+            }
+            // Vowel-modifier path (ow→ơ, aw→ă, uw→ư) is always active
+            // regardless of wKeyAsLetter.
+            insertW(keyForAEO, isCaps)
+        }
                 break
             }
         }
         if !isChanged {
             if data == KEY_W {
-                checkForStandaloneChar(data, isCaps, KEY_U)
+                if idx == 0 && !config.wKeyAsLetter {
+                    // Feature OFF + truly at start of word: plain 'w'.
+                    insertKey(data, isCaps)
+                } else {
+                    // After consonant (any idx>0), OR feature ON: always ư.
+                    insertKey(data, isCaps, false)
+                    reverseLastStandaloneChar(UInt32(KEY_U), isCaps)
+                }
             } else {
                 insertKey(data, isCaps)
             }
