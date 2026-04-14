@@ -53,6 +53,13 @@ public final class InputController {
     /// Secondary hotkey modifier flags (NSEvent.ModifierFlags rawValue).
     public var secondaryHotkeyModifiers: Int = 0
 
+    /// When true, the primary shortcut fires on modifier + Space keyDown.
+    public var primaryHotkeyIncludesSpace: Bool = false
+
+    /// CGEventFlags modifier mask required alongside Space for the primary space hotkey.
+    /// Must be non-zero — Space alone never triggers to avoid disrupting normal typing.
+    public var primarySpaceHotkeyModifiers: UInt64 = 0
+
     /// When true, the next keyDown is captured for shortcut recording instead of normal processing.
     /// The tap consumes the event so it doesn't leak to other apps.
     public var isRecordingShortcut: Bool = false
@@ -414,6 +421,21 @@ private func eventTapCallback(
     let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
     if controller.checkKeyDownHotkey(keyCode: keyCode, flags: event.flags.rawValue) {
         return nil // Consume the hotkey event
+    }
+
+    // 10b. Check primary shortcut: modifier + Space
+    if controller.primaryHotkeyIncludesSpace && keyCode == 49 {
+        let relevantMask = CGEventFlags.maskControl.rawValue
+            | CGEventFlags.maskShift.rawValue
+            | CGEventFlags.maskCommand.rawValue
+            | CGEventFlags.maskAlternate.rawValue
+        let currentModifiers = event.flags.rawValue & relevantMask
+        let required = controller.primarySpaceHotkeyModifiers
+        if required != 0 && currentModifiers == required {
+            controller.toggleLanguage()
+            controller.onLanguageSwitch?()
+            return nil
+        }
     }
 
     // 11. Check if Vietnamese mode is active

@@ -8,6 +8,7 @@ import Cocoa
 import SwiftUI
 import Engine
 import EventTap
+import ApplicationServices
 
 @main
 struct GoviKeyApp {
@@ -25,6 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let inputController = InputController()
     private let settings = UserSettings()
     private var settingsWindow: NSWindow?
+    private var permissionWindow: NSWindow?
+    private var permissionTimer: Timer?
     private var settingsObserver: Any?
     private var cachedMenu: NSMenu?
 
@@ -42,7 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
 
         if !inputController.start() {
-            showAccessibilityAlert()
+            showPermissionWindow()
         }
 
         settingsObserver = NotificationCenter.default.addObserver(
@@ -173,11 +176,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func updateStatusIcon() {
-        if let button = statusItem.button {
-            let isVi = inputController.isVietnameseMode
-            button.title = isVi ? "Vi" : "En"
-            button.toolTip = isVi ? L.tooltipVietnamese : L.tooltipEnglish
+        guard let button = statusItem.button else { return }
+        let isVi = inputController.isVietnameseMode
+        button.title = ""
+        button.image = menubarIcon(isVietnamese: isVi)
+        button.toolTip = isVi ? L.tooltipVietnamese : L.tooltipEnglish
+    }
+
+    private func menubarIcon(isVietnamese: Bool) -> NSImage? {
+        let name = isVietnamese ? "menubar_vietnamese" : "menubar_english"
+        let pointSize = NSSize(width: 16, height: 16)
+        let img = NSImage(size: pointSize)
+
+        func addRep(resource: String) {
+            guard let url = Bundle.module.url(forResource: resource, withExtension: "png"),
+                  let data = try? Data(contentsOf: url),
+                  let rep = NSBitmapImageRep(data: data) else { return }
+            rep.size = pointSize   // declare logical point size for this rep
+            img.addRepresentation(rep)
         }
+
+        addRep(resource: name)           // 18 px → 1× rep
+        addRep(resource: "\(name)@2x")   // 36 px → 2× rep
+
+        img.isTemplate = true
+        return img
     }
 
     // MARK: - Switch Sound
@@ -329,22 +352,164 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         NSApp.setActivationPolicy(.accessory)
     }
 
-    // MARK: - Accessibility
+    // MARK: - Accessibility Permission
 
-    private func showAccessibilityAlert() {
-        let alert = NSAlert()
-        alert.messageText = L.accessibilityTitle
-        alert.informativeText = L.accessibilityMessage
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: L.openSystemSettings)
-        alert.addButton(withTitle: L.quit)
+    private func showPermissionWindow() {
+        NSApp.setActivationPolicy(.regular)
 
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-            NSWorkspace.shared.open(url)
+        let permissionState = PermissionState()
+        let view = PermissionView(
+            state: permissionState,
+            onOpenSettings: { [weak self] in
+                self?.openAccessibilitySettings()
+            },
+            onQuit: {
+                NSApplication.shared.terminate(nil)
+            },
+            onStart: { [weak self] in
+                self?.onPermissionGranted()
+            }
+        ).preferredColorScheme(.light)
+
+        let hostingController = NSHostingController(rootView: view)
+        let window = NSWindow(contentViewController: hostingController)
+        window.title = L.permissionTitle
+        window.styleMask = [.titled, .closable]
+        window.appearance = NSAppearance(named: .aqua)
+        window.setContentSize(NSSize(width: 440, height: 340))
+        window.center()
+        window.isReleasedWhenClosed = false
+        window.delegate = self
+        window.orderFrontRegardless()
+        NSApp.activate(ignoringOtherApps: true)
+
+        permissionWindow = window
+
+        // Poll until permission is granted, then let the user click Start
+        permissionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self, weak permissionState] _ in
+            guard AXIsProcessTrusted() else { return }
+            self?.permissionTimer?.invalidate()
+            self?.permissionTimer = nil
+            DispatchQueue.main.async {
+                permissionState?.granted = true
+            }
         }
-        NSApplication.shared.terminate(nil)
+    }
+
+    private func openAccessibilitySettings() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
+        NSWorkspace.shared.open(url)
+    }
+
+    private func onPermissionGranted() {
+        permissionWindow?.close()
+        permissionWindow = nil
+        NSApp.setActivationPolicy(.accessory)
+
+        if !inputController.start() {
+            // Permission was granted but tap still failed — show fallback alert
+            let alert = NSAlert()
+            alert.messageText = L.accessibilityTitle
+            alert.informativeText = L.accessibilityMessage
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: L.quit)
+            alert.runModal()
+            NSApplication.shared.terminate(nil)
+        }
+    }
+}
+
+// MARK: - Permission Window
+
+final class PermissionState: ObservableObject {
+    @Published var granted: Bool = false
+}
+
+struct PermissionView: View {
+    @ObservedObject var state: PermissionState
+    var onOpenSettings: () -> Void
+    var onQuit: () -> Void
+    var onStart: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            VStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.orange.opacity(0.12))
+                        .frame(width: 64, height: 64)
+                    Image(systemName: "hand.raised.fill")
+                        .font(.system(size: 32))
+                        .foregroundColor(.orange)
+                }
+
+                Text(L.permissionTitle)
+                    .font(.title2).bold()
+
+                Text(L.permissionSubtitle)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.top, 28)
+            .padding(.horizontal, 32)
+
+            // Steps
+            VStack(alignment: .leading, spacing: 10) {
+                permissionStep(number: "1", text: L.permissionStep1)
+                permissionStep(number: "2", text: L.permissionStep2)
+                permissionStep(number: "3", text: L.permissionStep3)
+            }
+            .padding(.top, 20)
+            .padding(.horizontal, 32)
+
+            Spacer()
+
+            // Status + Buttons
+            VStack(spacing: 10) {
+                if state.granted {
+                    Label(L.permissionGranted, systemImage: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.subheadline.weight(.medium))
+
+                    Button(L.startGoviKey, action: onStart)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                } else {
+                    Label(L.permissionWaiting, systemImage: "clock")
+                        .foregroundColor(.secondary)
+                        .font(.subheadline)
+
+                    HStack(spacing: 12) {
+                        Button(L.quit, action: onQuit)
+                            .buttonStyle(.bordered)
+
+                        Button(L.openSystemSettings, action: onOpenSettings)
+                            .buttonStyle(.borderedProminent)
+                    }
+                }
+            }
+            .padding(.bottom, 24)
+        }
+        .frame(width: 440, height: 340)
+    }
+
+    private func permissionStep(number: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(Color.accentColor)
+                    .frame(width: 22, height: 22)
+                Text(number)
+                    .font(.caption.bold())
+                    .foregroundColor(.white)
+            }
+            Text(text)
+                .font(.subheadline)
+                .foregroundColor(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 

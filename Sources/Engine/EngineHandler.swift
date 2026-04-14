@@ -124,7 +124,18 @@ extension VietnameseEngine {
             !tempDisableKey && checkQuickConsonant() {
             spaceCount += 1
         } else if tempDisableKey {
-            if !(config.restoreIfWrongSpelling && checkRestoreIfWrongSpelling(EngineAction.restore.rawValue)) {
+            if config.restoreIfWrongSpelling && checkRestoreIfWrongSpelling(EngineAction.restore.rawValue) {
+                // Restore succeeded — the Space event will be consumed by EventRouter,
+                // so append the Space character to the output directly.
+                // hData is stored in reverse (index 0 = last char), so shift right and insert at 0.
+                if hNCC < hData.count {
+                    for j in stride(from: hNCC - 1, through: 0, by: -1) {
+                        hData[j + 1] = hData[j]
+                    }
+                    hData[0] = UInt32(0x0020) | PURE_CHARACTER_MASK
+                    hNCC += 1
+                }
+            } else {
                 hCode = EngineAction.doNothing.rawValue
             }
             spaceCount += 1

@@ -1,10 +1,16 @@
 // VietnameseEngineTests.swift
 // GoviKey Engine Tests
+//
+// Comprehensive test suite for Telex and VNI input methods.
+// Tests cover: basic diacritics, tone marks, combined forms, restore/cycling,
+// word composition, spelling, orthography, and edge cases.
 
 import XCTest
 @testable import Engine
 
-final class VietnameseEngineTests: XCTestCase {
+// MARK: - Base
+
+class EngineTestBase: XCTestCase {
 
     var engine: VietnameseEngine!
 
@@ -17,9 +23,9 @@ final class VietnameseEngineTests: XCTestCase {
         engine.initialize()
     }
 
-    // MARK: - Helper
+    // MARK: - Helpers
 
-    /// Simulate typing a string and return the last result.
+    @discardableResult
     func type(_ keys: String) -> EngineResult {
         var result = EngineResult.passThrough
         for ch in keys {
@@ -39,409 +45,653 @@ final class VietnameseEngineTests: XCTestCase {
         return result
     }
 
-    /// Get the composed output as Unicode string from engine state.
-    func composedOutput() -> String {
+    @discardableResult
+    func press(_ keyCode: UInt16, caps: UInt8 = 0) -> EngineResult {
+        engine.handleKeyEvent(
+            event: .keyboard, state: .keyDown,
+            keyCode: keyCode, capsStatus: caps, otherControlKey: false
+        )
+    }
+
+    /// Render the current engine buffer as a Unicode string.
+    func output() -> String {
         var chars: [UInt16] = []
         for i in 0..<engine.idx {
             let code = engine.getCharacterCode(engine.typingWord[i])
             if (code & CHAR_CODE_MASK) != 0 {
-                let charVal = UInt16(code & CHAR_MASK)
-                if charVal > 0 {
-                    chars.append(charVal)
-                }
+                let v = UInt16(code & CHAR_MASK)
+                if v > 0 { chars.append(v) }
             } else {
-                let raw = vnKeyCodeToCharacter(engine.typingWord[i])
-                if raw > 0 { chars.append(raw) }
+                let v = vnKeyCodeToCharacter(engine.typingWord[i])
+                if v > 0 { chars.append(v) }
             }
         }
         return String(utf16CodeUnits: chars, count: chars.count)
     }
+}
 
-    // MARK: - Basic Telex Tests
+// MARK: - Telex Basic Tests
 
-    func testSimpleLetterPassThrough() {
+final class TelexBasicTests: EngineTestBase {
+
+    // MARK: Diacritics — circumflex
+
+    func testCircumflexA() {
+        // aa → â
+        type("aa")
+        XCTAssertEqual(output(), "â")
+    }
+
+    func testCircumflexE() {
+        // ee → ê
+        type("ee")
+        XCTAssertEqual(output(), "ê")
+    }
+
+    func testCircumflexO() {
+        // oo → ô
+        type("oo")
+        XCTAssertEqual(output(), "ô")
+    }
+
+    // MARK: Diacritics — breve / horn
+
+    func testBreveA() {
+        // aw → ă
+        type("aw")
+        XCTAssertEqual(output(), "ă")
+    }
+
+    func testHornO() {
+        // ow → ơ
+        type("ow")
+        XCTAssertEqual(output(), "ơ")
+    }
+
+    func testHornU() {
+        // uw → ư
+        type("uw")
+        XCTAssertEqual(output(), "ư")
+    }
+
+    // MARK: Stroke D
+
+    func testStrokedD() {
+        // dd → đ
+        type("dd")
+        XCTAssertEqual(output(), "đ")
+    }
+
+    // MARK: Tone marks on plain 'a'
+
+    func testSacOnA() {
+        type("as")
+        XCTAssertEqual(output(), "á")
+    }
+
+    func testHuyenOnA() {
+        type("af")
+        XCTAssertEqual(output(), "à")
+    }
+
+    func testHoiOnA() {
+        type("ar")
+        XCTAssertEqual(output(), "ả")
+    }
+
+    func testNgaOnA() {
+        type("ax")
+        XCTAssertEqual(output(), "ã")
+    }
+
+    func testNangOnA() {
+        type("aj")
+        XCTAssertEqual(output(), "ạ")
+    }
+
+    // MARK: Tone marks on â
+
+    func testSacOnCircumflexA() {
+        // aas → ấ
+        type("aas")
+        XCTAssertEqual(output(), "ấ")
+    }
+
+    func testHuyenOnCircumflexA() {
+        type("aaf")
+        XCTAssertEqual(output(), "ầ")
+    }
+
+    func testHoiOnCircumflexA() {
+        type("aar")
+        XCTAssertEqual(output(), "ẩ")
+    }
+
+    func testNgaOnCircumflexA() {
+        type("aax")
+        XCTAssertEqual(output(), "ẫ")
+    }
+
+    func testNangOnCircumflexA() {
+        type("aaj")
+        XCTAssertEqual(output(), "ậ")
+    }
+
+    // MARK: Tone marks on ă
+
+    func testSacOnBreveA() {
+        // aws → ắ
+        type("aws")
+        XCTAssertEqual(output(), "ắ")
+    }
+
+    func testHuyenOnBreveA() {
+        type("awf")
+        XCTAssertEqual(output(), "ằ")
+    }
+
+    func testHoiOnBreveA() {
+        type("awr")
+        XCTAssertEqual(output(), "ẳ")
+    }
+
+    func testNgaOnBreveA() {
+        type("awx")
+        XCTAssertEqual(output(), "ẵ")
+    }
+
+    func testNangOnBreveA() {
+        type("awj")
+        XCTAssertEqual(output(), "ặ")
+    }
+
+    // MARK: Tone marks on ê
+
+    func testSacOnCircumflexE() {
+        type("ees")
+        XCTAssertEqual(output(), "ế")
+    }
+
+    func testHuyenOnCircumflexE() {
+        type("eef")
+        XCTAssertEqual(output(), "ề")
+    }
+
+    func testHoiOnCircumflexE() {
+        type("eer")
+        XCTAssertEqual(output(), "ể")
+    }
+
+    func testNgaOnCircumflexE() {
+        type("eex")
+        XCTAssertEqual(output(), "ễ")
+    }
+
+    func testNangOnCircumflexE() {
+        type("eej")
+        XCTAssertEqual(output(), "ệ")
+    }
+
+    // MARK: Tone marks on ô
+
+    func testSacOnCircumflexO() {
+        type("oos")
+        XCTAssertEqual(output(), "ố")
+    }
+
+    func testHuyenOnCircumflexO() {
+        type("oof")
+        XCTAssertEqual(output(), "ồ")
+    }
+
+    func testHoiOnCircumflexO() {
+        type("oor")
+        XCTAssertEqual(output(), "ổ")
+    }
+
+    func testNgaOnCircumflexO() {
+        type("oox")
+        XCTAssertEqual(output(), "ỗ")
+    }
+
+    func testNangOnCircumflexO() {
+        type("ooj")
+        XCTAssertEqual(output(), "ộ")
+    }
+
+    // MARK: Tone marks on ơ
+
+    func testSacOnHornO() {
+        type("ows")
+        XCTAssertEqual(output(), "ớ")
+    }
+
+    func testHuyenOnHornO() {
+        type("owf")
+        XCTAssertEqual(output(), "ờ")
+    }
+
+    func testHoiOnHornO() {
+        type("owr")
+        XCTAssertEqual(output(), "ở")
+    }
+
+    func testNgaOnHornO() {
+        type("owx")
+        XCTAssertEqual(output(), "ỡ")
+    }
+
+    func testNangOnHornO() {
+        type("owj")
+        XCTAssertEqual(output(), "ợ")
+    }
+
+    // MARK: Tone marks on ư
+
+    func testSacOnHornU() {
+        type("uws")
+        XCTAssertEqual(output(), "ứ")
+    }
+
+    func testHuyenOnHornU() {
+        type("uwf")
+        XCTAssertEqual(output(), "ừ")
+    }
+
+    func testHoiOnHornU() {
+        type("uwr")
+        XCTAssertEqual(output(), "ử")
+    }
+
+    func testNgaOnHornU() {
+        type("uwx")
+        XCTAssertEqual(output(), "ữ")
+    }
+
+    func testNangOnHornU() {
+        type("uwj")
+        XCTAssertEqual(output(), "ự")
+    }
+
+    // MARK: Uppercase
+
+    func testUppercaseA_Sac() {
+        // "As" → Á
+        type("As")
+        XCTAssertEqual(output(), "Á")
+    }
+
+    func testUppercaseD_Stroked() {
+        // "DD" → Đ
+        type("DD")
+        XCTAssertEqual(output(), "Đ")
+    }
+
+    func testUppercaseCircumflexA() {
+        // "AA" → Â
+        type("AA")
+        XCTAssertEqual(output(), "Â")
+    }
+
+    // MARK: Passthrough
+
+    func testNonSpecialKey_DoNothing() {
         let result = type("h")
         XCTAssertEqual(result.action, .doNothing)
         XCTAssertEqual(engine.idx, 1)
     }
+}
 
-    func testTelexCircumflexA() {
-        // "aa" -> â
-        _ = type("a")
-        let result = type("a")
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "â")
+// MARK: - Telex Restore / Cycling Tests
+
+final class TelexRestoreTests: EngineTestBase {
+
+    // MARK: Diacritic cycling
+
+    func testCircumflexARestores() {
+        // aa → â, then a → restore to "aa"
+        type("aa")
+        XCTAssertEqual(output(), "â")
+
+        let r = type("a")
+        XCTAssertEqual(r.action, .restore)
+        XCTAssertEqual(r.backspaceCount, 1)
+        XCTAssertEqual(r.newCharCount, 2)
+        XCTAssertEqual(output(), "aa")
     }
 
-    func testTelexCircumflexE() {
-        // "ee" -> ê
-        _ = type("e")
-        let result = type("e")
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "ê")
+    func testCircumflexERestores() {
+        // ee → ê, then e → restore to "ee"
+        type("ee")
+        XCTAssertEqual(output(), "ê")
+
+        let r = type("e")
+        XCTAssertEqual(r.action, .restore)
+        XCTAssertEqual(r.backspaceCount, 1)
+        XCTAssertEqual(r.newCharCount, 2)
+        XCTAssertEqual(output(), "ee")
     }
 
-    func testTelexCircumflexO() {
-        // "oo" -> ô
-        _ = type("o")
-        let result = type("o")
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "ô")
+    func testCircumflexORestores() {
+        // oo → ô, then o → restore to "oo"
+        type("oo")
+        XCTAssertEqual(output(), "ô")
+
+        let r = type("o")
+        XCTAssertEqual(r.action, .restore)
+        XCTAssertEqual(r.backspaceCount, 1)
+        XCTAssertEqual(r.newCharCount, 2)
+        XCTAssertEqual(output(), "oo")
     }
 
-    func testTelexBreveA() {
-        // "aw" -> ă
-        _ = type("a")
-        let result = type("w")
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "ă")
+    func testHornURestores() {
+        // uw → ư, then w → restore to "uw"
+        type("uw")
+        XCTAssertEqual(output(), "ư")
+
+        let r = type("w")
+        XCTAssertEqual(r.action, .restore)
+        XCTAssertEqual(r.backspaceCount, 1)
+        XCTAssertEqual(r.newCharCount, 2)
+        XCTAssertEqual(output(), "uw")
     }
 
-    func testTelexHornO() {
-        // "ow" -> ơ (standalone)
-        _ = type("o")
-        let result = type("w")
-        XCTAssertEqual(result.action, .willProcess)
+    func testHornORestores() {
+        // ow → ơ, then w → restore to "ow"
+        type("ow")
+        XCTAssertEqual(output(), "ơ")
+
+        let r = type("w")
+        XCTAssertEqual(r.action, .restore)
+        XCTAssertEqual(r.backspaceCount, 1)
+        XCTAssertEqual(r.newCharCount, 2)
+        XCTAssertEqual(output(), "ow")
     }
 
-    func testTelexHornU() {
-        // "uw" -> ư (standalone)
-        _ = type("u")
-        let result = type("w")
-        XCTAssertEqual(result.action, .willProcess)
+    func testStrokedDRestores() {
+        // dd → đ, then d → restore to "dd"
+        type("dd")
+        XCTAssertEqual(output(), "đ")
+
+        let r = type("d")
+        XCTAssertEqual(r.action, .restore)
+        XCTAssertEqual(r.backspaceCount, 1)
+        XCTAssertEqual(r.newCharCount, 2)
+        XCTAssertEqual(output(), "dd")
     }
 
-    func testTelexStrokedD() {
-        // "dd" -> đ
-        _ = type("d")
-        let result = type("d")
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "đ")
+    // MARK: Restore does not re-cycle
+
+    func testRestoreDoesNotRecycleO() {
+        // oo → ô → ooo restores to "oo" → 4th 'o' appends raw (no re-transform)
+        type("ooo")
+        XCTAssertEqual(output(), "oo")
+
+        type("o")
+        XCTAssertEqual(output(), "ooo")
     }
 
-    // MARK: - Tone Mark Tests (Telex)
+    func testRestoreDoesNotRecycleU() {
+        // uw → ư → uww restores to "uw" → 4th 'w' appends raw
+        type("uww")
+        XCTAssertEqual(output(), "uw")
 
-    func testTelexSacTone() {
-        // "as" -> á
-        _ = type("a")
-        let result = type("s")
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "á")
+        type("w")
+        XCTAssertEqual(output(), "uww")
     }
 
-    func testTelexHuyenTone() {
-        // "af" -> à
-        _ = type("a")
-        let result = type("f")
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "à")
+    // MARK: Tone cycling
+
+    func testSameToneKeyRemovesTone() {
+        // "as" → á; then "s" again toggles the mark OFF (restore) and the 's'
+        // is appended to the buffer, producing "as" raw.
+        type("as")
+        XCTAssertEqual(output(), "á")
+        let r = type("s")
+        XCTAssertEqual(r.action, .restore)
+        XCTAssertEqual(r.backspaceCount, 1)
+        XCTAssertEqual(r.newCharCount, 2)
+        XCTAssertEqual(output(), "as")
     }
 
-    func testTelexHoiTone() {
-        // "ar" -> ả
-        _ = type("a")
-        let result = type("r")
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "ả")
+    // MARK: Circumflex + tone then restore circumflex
+
+    func testCircumflexPlusToneThenBaseKey() {
+        // "aas" → ấ, then "a" → restore circumflex → "áa"
+        type("aas")
+        XCTAssertEqual(output(), "ấ")
+
+        let r = type("a")
+        XCTAssertEqual(r.action, .restore)
+        XCTAssertEqual(r.backspaceCount, 1)
+        XCTAssertEqual(r.newCharCount, 2)
+        XCTAssertEqual(output(), "áa")
     }
 
-    func testTelexNgaTone() {
-        // "ax" -> ã
-        _ = type("a")
-        let result = type("x")
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "ã")
+    func testBrevePlusToneCyclesToCircumflex() {
+        // "aws" → ắ, then "a" → cycles breve→circumflex → ấ
+        type("aws")
+        XCTAssertEqual(output(), "ắ")
+
+        let r = type("a")
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ấ")
     }
 
-    func testTelexNangTone() {
-        // "aj" -> ạ
-        _ = type("a")
-        let result = type("j")
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "ạ")
+    // MARK: ESC restores raw keys
+
+    func testEscRestoresRawKeys() {
+        // Type Vietnamese, then ESC → restore to raw key sequence
+        type("aa")                  // â
+        XCTAssertEqual(output(), "â")
+
+        let r = press(KEY_ESC)
+        XCTAssertEqual(r.action, .restore)
+        XCTAssertEqual(r.backspaceCount, 1)
+        // Restored output should be 2 raw chars "aa"
+        XCTAssertEqual(r.newCharCount, 2)
     }
 
-    // MARK: - Combined vowel + tone tests
+    func testEscOnPlainTextNoOp() {
+        // ESC with no transforms → does nothing
+        type("abc")
+        let r = press(KEY_ESC)
+        XCTAssertEqual(r.action, .doNothing)
+    }
+}
 
-    func testTelexCircumflexWithTone() {
-        // "aas" -> ấ
-        engine.resetSession()
-        _ = type("a")
-        _ = type("a")
-        let result = type("s")
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "ấ")
+// MARK: - Telex Word Tests
+
+final class TelexWordTests: EngineTestBase {
+
+    func testWordViet() {
+        // "vieejt" → "việt"
+        type("vieejt")
+        XCTAssertEqual(output(), "việt")
     }
 
-    func testTelexBreveWithTone() {
-        // "aws" -> ắ
-        engine.resetSession()
-        _ = type("a")
-        _ = type("w")
-        let result = type("s")
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "ắ")
+    func testWordDuong() {
+        // "dduwowngf" → "đường"
+        type("dduwowngf")
+        XCTAssertEqual(output(), "đường")
     }
 
-    // MARK: - Word composition tests
-
-    func testVietnameseWordViet() {
-        // "vieejt" -> việt
-        engine.resetSession()
-        _ = type("vieejt")
-        let output = composedOutput()
-        XCTAssertEqual(output, "việt")
+    func testWordNguoi() {
+        // "nguowif" → "người"
+        type("nguowif")
+        XCTAssertEqual(output(), "người")
     }
 
-    func testVietnameseWordNam() {
-        // "nam" -> nam (no transformation)
-        engine.resetSession()
-        _ = type("nam")
-        let output = composedOutput()
-        XCTAssertEqual(output, "nam")
+    func testWordNam() {
+        // "nam" → no transform
+        type("nam")
+        XCTAssertEqual(output(), "nam")
     }
 
-    func testVietnameseWordXinChao() {
-        // "xin" -> xin
-        engine.resetSession()
-        _ = type("xin")
-        let output = composedOutput()
-        XCTAssertEqual(output, "xin")
+    func testWordXin() {
+        // "xin" → no transform
+        type("xin")
+        XCTAssertEqual(output(), "xin")
     }
 
-    func testVietnameseWordDuong() {
-        // "dduwowngf" -> đường
-        engine.resetSession()
-        _ = type("dduwowngf")
-        let output = composedOutput()
-        XCTAssertEqual(output, "đường")
+    func testWordTieng() {
+        // "tieengs" → "tiếng"
+        type("tieengs")
+        XCTAssertEqual(output(), "tiếng")
     }
 
-    func testVietnameseWordNguoi() {
-        // "nguowif" -> người
-        engine.resetSession()
-        _ = type("nguowif")
-        let output = composedOutput()
-        XCTAssertEqual(output, "người")
+    func testWordHanh() {
+        // "hanjh" → "hạnh" (h + a + n + nặng + h = hạnh, no 'o')
+        type("hanjh")
+        XCTAssertEqual(output(), "hạnh")
     }
 
-    // MARK: - Toggle behavior tests
-
-    func testTelexDoubleToggle() {
-        // "aas" -> ấ, then "s" again should remove the mark
-        engine.resetSession()
-        _ = type("aass")
-        // After "aass": â + s toggled off = should restore
-        let result = engine.hCode
-        XCTAssertEqual(result, EngineAction.restore.rawValue)
+    func testWordChao() {
+        // "chaof" → "chào"
+        type("chaof")
+        XCTAssertEqual(output(), "chào")
     }
 
-    func testTelexDToggle() {
-        // "dd" -> đ, then "d" again should restore to "dd" (iOS behavior)
-        engine.resetSession()
-        _ = type("d")
-        _ = type("d")
-        let output1 = composedOutput()
-        XCTAssertEqual(output1, "đ")
-
-        let result = type("d")
-        // Restore: backspace "đ" (1), output "dd" (2)
-        XCTAssertEqual(result.action, .restore)
-        XCTAssertEqual(result.backspaceCount, 1)
-        XCTAssertEqual(result.newCharCount, 2)
-        let output2 = composedOutput()
-        XCTAssertEqual(output2, "dd")
+    func testWordTuan() {
+        // "tuaans" → "tuấn"
+        type("tuaans")
+        XCTAssertEqual(output(), "tuấn")
     }
+}
 
-    // MARK: - iOS-style restore tests
+// MARK: - Telex Modern Orthography Tests
 
-    func testTelexCircumflexARestore() {
-        // "aa" -> â, then "a" again -> "aa"
-        engine.resetSession()
-        _ = type("aa")
-        XCTAssertEqual(composedOutput(), "â")
+final class TelexOrthographyTests: EngineTestBase {
 
-        let result = type("a")
-        XCTAssertEqual(result.action, .restore)
-        XCTAssertEqual(result.backspaceCount, 1)
-        XCTAssertEqual(result.newCharCount, 2)
-        XCTAssertEqual(composedOutput(), "aa")
-    }
-
-    func testTelexCircumflexERestore() {
-        // "ee" -> ê, then "e" again -> "ee"
-        engine.resetSession()
-        _ = type("ee")
-        XCTAssertEqual(composedOutput(), "ê")
-
-        let result = type("e")
-        XCTAssertEqual(result.action, .restore)
-        XCTAssertEqual(result.backspaceCount, 1)
-        XCTAssertEqual(result.newCharCount, 2)
-        XCTAssertEqual(composedOutput(), "ee")
-    }
-
-    func testTelexCircumflexORestore() {
-        // "oo" -> ô, then "o" again -> "oo"
-        engine.resetSession()
-        _ = type("oo")
-        XCTAssertEqual(composedOutput(), "ô")
-
-        let result = type("o")
-        XCTAssertEqual(result.action, .restore)
-        XCTAssertEqual(result.backspaceCount, 1)
-        XCTAssertEqual(result.newCharCount, 2)
-        XCTAssertEqual(composedOutput(), "oo")
-    }
-
-    func testTelexHornURestore() {
-        // "uw" -> ư, then "w" again -> "uw"
-        engine.resetSession()
-        _ = type("u")
-        _ = type("w")
-        XCTAssertEqual(composedOutput(), "ư")
-
-        let result = type("w")
-        XCTAssertEqual(result.action, .restore)
-        XCTAssertEqual(result.backspaceCount, 1)
-        XCTAssertEqual(result.newCharCount, 2)
-        XCTAssertEqual(composedOutput(), "uw")
-    }
-
-    func testTelexCircumflexPlusToneThenSameKey() {
-        // "aas" -> ấ, then "a" -> "áa" (restore circumflex, keep tone, append new a)
-        engine.resetSession()
-        _ = type("aas")
-        XCTAssertEqual(composedOutput(), "ấ")
-
-        let result = type("a")
-        XCTAssertEqual(result.action, .restore)
-        XCTAssertEqual(result.backspaceCount, 1)
-        XCTAssertEqual(result.newCharCount, 2)
-        XCTAssertEqual(composedOutput(), "áa")
-    }
-
-    func testTelexBrevePlusToneCyclesToCircumflex() {
-        // "aws" -> ắ, then "a" -> "ấ" (breve cycles to circumflex, tone preserved)
-        engine.resetSession()
-        _ = type("aws")
-        XCTAssertEqual(composedOutput(), "ắ")
-
-        let result = type("a")
-        XCTAssertEqual(result.action, .willProcess)
-        XCTAssertEqual(composedOutput(), "ấ")
-    }
-
-    func testTelexRestoreDoesNotRecycleO() {
-        // After "oo" -> ô -> restore to "oo", a 4th "o" should just append raw (not re-transform)
-        engine.resetSession()
-        _ = type("ooo") // restore to "oo"
-        XCTAssertEqual(composedOutput(), "oo")
-        _ = type("o")   // 4th o: tempDisableKey=true, should be raw
-        XCTAssertEqual(composedOutput(), "ooo")
-    }
-
-    // MARK: - VNI Mode Tests
-
-    func testVNISacTone() {
-        engine.config.inputType = .vni
-        engine.resetSession()
-        // "a1" -> á
-        _ = type("a")
-        let result = engine.handleKeyEvent(
-            event: .keyboard, state: .keyDown,
-            keyCode: KEY_1, capsStatus: 0, otherControlKey: false
-        )
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "á")
-    }
-
-    func testVNIHuyenTone() {
-        engine.config.inputType = .vni
-        engine.resetSession()
-        // "a2" -> à
-        _ = type("a")
-        let result = engine.handleKeyEvent(
-            event: .keyboard, state: .keyDown,
-            keyCode: KEY_2, capsStatus: 0, otherControlKey: false
-        )
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "à")
-    }
-
-    func testVNICircumflex() {
-        engine.config.inputType = .vni
-        engine.resetSession()
-        // "a6" -> â
-        _ = type("a")
-        let result = engine.handleKeyEvent(
-            event: .keyboard, state: .keyDown,
-            keyCode: KEY_6, capsStatus: 0, otherControlKey: false
-        )
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "â")
-    }
-
-    func testVNIStrokedD() {
-        engine.config.inputType = .vni
-        engine.resetSession()
-        // "d9" -> đ
-        _ = type("d")
-        let result = engine.handleKeyEvent(
-            event: .keyboard, state: .keyDown,
-            keyCode: KEY_9, capsStatus: 0, otherControlKey: false
-        )
-        XCTAssertEqual(result.action, .willProcess)
-        let output = composedOutput()
-        XCTAssertEqual(output, "đ")
-    }
-
-    // MARK: - Modern Orthography Tests
-
-    func testModernMarkPlacement_Hoang() {
-        // "hoangf" with modern orthography -> hoàng (mark on a, not o)
+    func testModernHoang() {
+        // "hoangf" with modern orthography → "hoàng" (mark on 'a', not 'o')
         engine.config.useModernOrthography = true
-        engine.resetSession()
-        _ = type("hoangf")
-        let output = composedOutput()
-        XCTAssertEqual(output, "hoàng")
+        type("hoangf")
+        XCTAssertEqual(output(), "hoàng")
     }
 
-    func testModernMarkPlacement_Thuong() {
-        // "thuwowngf" -> thường (mark on ơ)
+    func testModernThuong() {
+        // "thuwowngf" → "thường"
         engine.config.useModernOrthography = true
-        engine.resetSession()
-        _ = type("thuwowngf")
-        let output = composedOutput()
-        XCTAssertEqual(output, "thường")
+        type("thuwowngf")
+        XCTAssertEqual(output(), "thường")
     }
 
-    // MARK: - Spelling Check Tests
+    func testOldHoangSameAsModern() {
+        // "hoang" has the "oang" pattern with end consonant ng.
+        // handleOldMark sets VWSM = VSI+1 when canHasEndConsonant() is true,
+        // which places the mark on 'a' — same result as modern orthography.
+        engine.config.useModernOrthography = false
+        type("hoangf")
+        XCTAssertEqual(output(), "hoàng")
+    }
+}
 
-    func testSpellingValidWord() {
+// MARK: - Telex Spelling Tests
+
+final class TelexSpellingTests: EngineTestBase {
+
+    func testValidWordDoesNotDisable() {
         engine.config.checkSpelling = true
-        engine.resetSession()
-        _ = type("viet")
+        type("viet")
         XCTAssertFalse(engine.tempDisableKey)
     }
 
-    func testEngineReset() {
-        _ = type("abc")
+    func testInvalidSequenceDisablesKey() {
+        // "fj" is not a valid Vietnamese consonant → tempDisableKey stays false
+        // because unrecognised consonant starts are allowed through (spelling OK = true)
+        engine.config.checkSpelling = true
+        type("fj")
+        // fj is not in vnConsonantTable → matched=false → j=spellingEndIndex → spellingOK=true
+        XCTAssertFalse(engine.tempDisableKey)
+    }
+
+    func testSpellingCheckOff_NeverDisables() {
+        engine.config.checkSpelling = false
+        type("xzq")
+        XCTAssertFalse(engine.tempDisableKey)
+    }
+
+    // MARK: Restore on Space includes trailing Space
+
+    /// "uwhen" + Space: spell check triggers restore → output must include trailing Space.
+    /// "uw" → "ư" in the buffer (2 raw keystrokes), so restore replays all 5 raw keys
+    /// (u, w, h, e, n) plus the Space = 6 chars total, giving "uwhen ".
+    func testRestoreOnSpaceIncludesSpace() {
+        engine.config.checkSpelling = true
+        engine.config.restoreIfWrongSpelling = true
+        // "uw" → "ư", then "hen" → buffer contains "ưhen" (invalid Vietnamese)
+        type("uwhen")
+        XCTAssertTrue(engine.tempDisableKey, "Invalid sequence should set tempDisableKey")
+
+        let r = press(KEY_SPACE)
+        XCTAssertEqual(r.action, .restore, "Space on invalid word should trigger restore")
+        XCTAssertEqual(r.newCharCount, 6, "Output should be 6 chars: u-w-h-e-n-space")
+
+        // Decode the output and verify it ends with a space
+        let decoded = decodeResult(r)
+        XCTAssertEqual(decoded, "uwhen ", "Restored output must replay raw keys and include trailing space")
+    }
+
+    // MARK: - Result decode helper
+
+    private func decodeResult(_ result: EngineResult) -> String {
+        guard result.newCharCount > 0 else { return "" }
+        var chars: [UInt16] = []
+        for i in stride(from: result.newCharCount - 1, through: 0, by: -1) {
+            guard i < result.data.count else { continue }
+            let raw = result.data[i]
+            let ch: UInt16
+            if (raw & PURE_CHARACTER_MASK) != 0 || (raw & CHAR_CODE_MASK) != 0 {
+                ch = UInt16(raw & 0xFFFF)
+            } else {
+                ch = vnKeyCodeToCharacter(raw)
+            }
+            if ch > 0 { chars.append(ch) }
+        }
+        return String(utf16CodeUnits: chars, count: chars.count)
+    }
+}
+
+// MARK: - Telex Quick Telex Tests
+
+final class TelexQuickTelexTests: EngineTestBase {
+
+    func testQuickTelexCC() {
+        engine.config.quickTelex = true
+        type("c")
+        let r = type("c")
+        // cc → ch
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(r.backspaceCount, 1)
+        XCTAssertEqual(r.newCharCount, 2)
+    }
+
+    func testQuickTelexGG() {
+        engine.config.quickTelex = true
+        type("g")
+        let r = type("g")
+        // gg → gi
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(r.backspaceCount, 1)
+        XCTAssertEqual(r.newCharCount, 2)
+    }
+
+    func testQuickTelexDisabledDoesNotExpand() {
+        engine.config.quickTelex = false
+        type("c")
+        let r = type("c")
+        // Without quickTelex, cc = doNothing (both chars inserted raw)
+        XCTAssertEqual(r.action, .doNothing)
+    }
+}
+
+// MARK: - Telex Engine State Tests
+
+final class TelexEngineStateTests: EngineTestBase {
+
+    func testResetClearsBuffer() {
+        type("abc")
         XCTAssertEqual(engine.idx, 3)
         engine.resetSession()
         XCTAssertEqual(engine.idx, 0)
@@ -449,50 +699,306 @@ final class VietnameseEngineTests: XCTestCase {
         XCTAssertFalse(engine.tempDisableKey)
     }
 
-    // MARK: - Edge cases
-
-    func testEmptyInput() {
-        let result = engine.handleKeyEvent(
-            event: .keyboard, state: .keyDown,
-            keyCode: KEY_DELETE, capsStatus: 0, otherControlKey: false
-        )
-        XCTAssertEqual(result.action, .doNothing)
+    func testDeleteDecreasesBuffer() {
+        type("vie")
+        XCTAssertEqual(engine.idx, 3)
+        press(KEY_DELETE)
+        XCTAssertEqual(engine.idx, 2)
     }
 
-    func testUppercaseInput() {
-        // "As" -> Á
-        let _ = engine.handleKeyEvent(
-            event: .keyboard, state: .keyDown,
-            keyCode: KEY_A, capsStatus: 1, otherControlKey: false
-        )
-        let result = engine.handleKeyEvent(
-            event: .keyboard, state: .keyDown,
-            keyCode: KEY_S, capsStatus: 0, otherControlKey: false
-        )
-        XCTAssertEqual(result.action, .willProcess)
-        // Verify the first character has CAPS_MASK
-        XCTAssertTrue((engine.typingWord[0] & CAPS_MASK) != 0)
-    }
-
-    func testWordBreakOnComma() {
-        _ = type("viet")
-        let result = engine.handleKeyEvent(
-            event: .keyboard, state: .keyDown,
-            keyCode: KEY_COMMA, capsStatus: 0, otherControlKey: false
-        )
-        // After word break, engine should reset
+    func testDeleteOnEmptyBuffer() {
+        let r = press(KEY_DELETE)
+        XCTAssertEqual(r.action, .doNothing)
         XCTAssertEqual(engine.idx, 0)
     }
 
-    func testQuickTelexCC() {
-        engine.config.quickTelex = true
+    func testWordBreakOnCommaResetsBuffer() {
+        type("viet")
+        XCTAssertEqual(engine.idx, 4)
+        press(KEY_COMMA)
+        XCTAssertEqual(engine.idx, 0)
+    }
+
+    func testWordBreakOnSpaceDoesNotResetIdx() {
+        // Space is handled separately; idx is not cleared until next non-space key
+        type("viet")
+        press(KEY_SPACE)
+        // Space increments spaceCount but does not clear idx immediately
+        XCTAssertEqual(engine.spaceCount, 1)
+    }
+
+    func testUppercaseCapsMaskSet() {
+        press(KEY_A, caps: 1)
+        XCTAssertTrue((engine.typingWord[0] & CAPS_MASK) != 0)
+    }
+
+    func testEmptyBufferDeleteIsDoNothing() {
+        let r = press(KEY_DELETE)
+        XCTAssertEqual(r.action, .doNothing)
+    }
+}
+
+// MARK: - VNI Basic Tests
+
+final class VNIBasicTests: EngineTestBase {
+
+    override func setUp() {
+        super.setUp()
+        engine.config.inputType = .vni
         engine.resetSession()
-        _ = type("c")
-        let result = type("c")
-        // "cc" with quick telex -> ch
-        // The result should indicate willProcess with backspace 1 and new char count 2
-        XCTAssertEqual(result.action, .willProcess)
-        XCTAssertEqual(result.backspaceCount, 1)
-        XCTAssertEqual(result.newCharCount, 2)
+    }
+
+    // MARK: Tones (1-5)
+
+    func testSacOnA() {
+        // a + 1 → á
+        type("a")
+        let r = press(KEY_1)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "á")
+    }
+
+    func testHuyenOnA() {
+        // a + 2 → à
+        type("a")
+        let r = press(KEY_2)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "à")
+    }
+
+    func testHoiOnA() {
+        // a + 3 → ả
+        type("a")
+        let r = press(KEY_3)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ả")
+    }
+
+    func testNgaOnA() {
+        // a + 4 → ã
+        type("a")
+        let r = press(KEY_4)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ã")
+    }
+
+    func testNangOnA() {
+        // a + 5 → ạ
+        type("a")
+        let r = press(KEY_5)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ạ")
+    }
+
+    // MARK: Diacritics (6, 7, 8, 9)
+
+    func testCircumflexA() {
+        // a + 6 → â
+        type("a")
+        let r = press(KEY_6)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "â")
+    }
+
+    func testCircumflexE() {
+        // e + 6 → ê
+        type("e")
+        let r = press(KEY_6)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ê")
+    }
+
+    func testCircumflexO() {
+        // o + 6 → ô
+        type("o")
+        let r = press(KEY_6)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ô")
+    }
+
+    func testBreveA() {
+        // a + 8 → ă
+        type("a")
+        let r = press(KEY_8)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ă")
+    }
+
+    func testHornO() {
+        // o + 7 → ơ
+        type("o")
+        let r = press(KEY_7)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ơ")
+    }
+
+    func testHornU() {
+        // u + 7 → ư
+        type("u")
+        let r = press(KEY_7)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ư")
+    }
+
+    func testStrokedD() {
+        // d + 9 → đ
+        type("d")
+        let r = press(KEY_9)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "đ")
+    }
+
+    // MARK: Combined diacritic + tone
+
+    func testCircumflexA_Sac() {
+        // a + 6 + 1 → ấ
+        type("a")
+        press(KEY_6)
+        let r = press(KEY_1)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ấ")
+    }
+
+    func testCircumflexA_Huyen() {
+        type("a")
+        press(KEY_6)
+        press(KEY_2)
+        XCTAssertEqual(output(), "ầ")
+    }
+
+    func testCircumflexA_Hoi() {
+        type("a")
+        press(KEY_6)
+        press(KEY_3)
+        XCTAssertEqual(output(), "ẩ")
+    }
+
+    func testCircumflexA_Nga() {
+        type("a")
+        press(KEY_6)
+        press(KEY_4)
+        XCTAssertEqual(output(), "ẫ")
+    }
+
+    func testCircumflexA_Nang() {
+        type("a")
+        press(KEY_6)
+        press(KEY_5)
+        XCTAssertEqual(output(), "ậ")
+    }
+
+    func testBreveA_Sac() {
+        // a + 8 + 1 → ắ
+        type("a")
+        press(KEY_8)
+        let r = press(KEY_1)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ắ")
+    }
+
+    func testHornO_Sac() {
+        // o + 7 + 1 → ớ
+        type("o")
+        press(KEY_7)
+        let r = press(KEY_1)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ớ")
+    }
+
+    func testHornU_Sac() {
+        // u + 7 + 1 → ứ
+        type("u")
+        press(KEY_7)
+        let r = press(KEY_1)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ứ")
+    }
+
+    func testCircumflexE_Nang() {
+        // e + 6 + 5 → ệ
+        type("e")
+        press(KEY_6)
+        let r = press(KEY_5)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ệ")
+    }
+
+    func testCircumflexO_Hoi() {
+        // o + 6 + 3 → ổ
+        type("o")
+        press(KEY_6)
+        let r = press(KEY_3)
+        XCTAssertEqual(r.action, .willProcess)
+        XCTAssertEqual(output(), "ổ")
+    }
+
+    // MARK: Stroke restore
+
+    func testStrokedDRestores() {
+        // d + 9 → đ, then 9 → restore.
+        // In VNI the raw key sequence is [d, 9] (not "dd"), so output is "d9".
+        type("d")
+        press(KEY_9)
+        XCTAssertEqual(output(), "đ")
+
+        let r = press(KEY_9)
+        XCTAssertEqual(r.action, .restore)
+        XCTAssertEqual(output(), "d9")
+    }
+
+    // MARK: Number at start = word break
+
+    func testNumberAtStartIsWordBreak() {
+        // If idx == 0 and we type a number, it is treated as a word break (passthrough)
+        let r = press(KEY_1)
+        XCTAssertEqual(r.action, .doNothing)
+        XCTAssertEqual(engine.idx, 0)
+    }
+}
+
+// MARK: - VNI Word Tests
+
+final class VNIWordTests: EngineTestBase {
+
+    override func setUp() {
+        super.setUp()
+        engine.config.inputType = .vni
+        engine.resetSession()
+    }
+
+    func testWordViet() {
+        // v i e 6 t 5 → "việt"
+        type("vie")
+        press(KEY_6)   // ê
+        type("t")
+        press(KEY_5)   // nặng → ệ
+        XCTAssertEqual(output(), "việt")
+    }
+
+    func testWordOn() {
+        // o 6 n 3 → "ổn"
+        type("o")
+        press(KEY_6)   // ô
+        type("n")
+        press(KEY_3)   // hỏi → ổ
+        XCTAssertEqual(output(), "ổn")
+    }
+
+    func testWordUng() {
+        // u 7 n g 1 → "ứng"
+        type("u")
+        press(KEY_7)   // ư
+        type("ng")
+        press(KEY_1)   // sắc → ứ
+        XCTAssertEqual(output(), "ứng")
+    }
+
+    func testWordDo() {
+        // d 9 o 1 → "đó"
+        type("d")
+        press(KEY_9)   // đ
+        type("o")
+        press(KEY_1)   // sắc → ó
+        XCTAssertEqual(output(), "đó")
     }
 }

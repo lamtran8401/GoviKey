@@ -16,6 +16,7 @@ struct GeneralTab: View {
         if settings.switchKeyShift { parts.append("⇧") }
         if settings.switchKeyCommand { parts.append("⌘") }
         if settings.switchKeyOption { parts.append("⌥") }
+        if settings.switchKeySpace { parts.append("␣") }
         return parts.isEmpty ? "—" : parts.joined()
     }
 
@@ -69,6 +70,7 @@ struct GeneralTab: View {
                         ModifierKeyToggle(symbol: "⇧", name: "Shift", isOn: $settings.switchKeyShift)
                         ModifierKeyToggle(symbol: "⌘", name: "Command", isOn: $settings.switchKeyCommand)
                         ModifierKeyToggle(symbol: "⌥", name: "Option", isOn: $settings.switchKeyOption)
+                        ModifierKeyToggle(symbol: "␣", name: "Space", isOn: $settings.switchKeySpace)
                     }
                 }
                 .padding(.bottom, 14)

@@ -23,7 +23,8 @@ let package = Package(
         .executableTarget(
             name: "App",
             dependencies: ["Engine", "EventTap"],
-            path: "Sources/App"
+            path: "Sources/App",
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "EngineTests",

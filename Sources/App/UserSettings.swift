@@ -82,12 +82,16 @@ final class UserSettings: ObservableObject {
         didSet { notifyChange() }
     }
 
-    /// Whether the primary shortcut has any modifiers selected.
-    var hasPrimaryShortcut: Bool {
-        switchKeyControl || switchKeyShift || switchKeyCommand || switchKeyOption
+    @AppStorage("switchKeySpace") var switchKeySpace: Bool = false {
+        didSet { notifyChange() }
     }
 
-    /// Build CGEventFlags mask from selected modifier bools.
+    /// Whether the primary shortcut has any keys selected.
+    var hasPrimaryShortcut: Bool {
+        switchKeyControl || switchKeyShift || switchKeyCommand || switchKeyOption || switchKeySpace
+    }
+
+    /// Build CGEventFlags mask from the selected modifier bools.
     var primaryShortcutFlags: UInt64 {
         var flags: UInt64 = 0
         if switchKeyControl { flags |= CGEventFlags.maskControl.rawValue }
@@ -149,7 +153,19 @@ final class UserSettings: ObservableObject {
         controller.engine.config.quickStartConsonant = quickStartConsonant
         controller.engine.config.quickEndConsonant = quickEndConsonant
         controller.forceGameMode = forceGameMode
-        controller.hotkeyModifierMask = primaryShortcutFlags
+
+        if switchKeySpace {
+            // Space is part of the primary shortcut — detect via keyDown (modifier + Space).
+            // Disable the modifier-only path so modifiers alone don't accidentally fire.
+            controller.hotkeyModifierMask = 0
+            controller.primaryHotkeyIncludesSpace = true
+            controller.primarySpaceHotkeyModifiers = primaryShortcutFlags
+        } else {
+            controller.hotkeyModifierMask = primaryShortcutFlags
+            controller.primaryHotkeyIncludesSpace = false
+            controller.primarySpaceHotkeyModifiers = 0
+        }
+
         controller.secondaryHotkeyKeyCode = secondaryShortcutKeyCode
         controller.secondaryHotkeyModifiers = secondaryShortcutModifiers
         AppClassifier.shared.setCustomGames(customGameApps)

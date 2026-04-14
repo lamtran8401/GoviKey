@@ -4,21 +4,21 @@
       "type": "swift",
       "request": "launch",
       "args": [],
-      "cwd": "${workspaceFolder:VietKey}",
-      "name": "Debug VietKey",
-      "target": "VietKey",
+      "cwd": "${workspaceFolder:GoviKey}",
+      "name": "Debug GoviKey",
+      "target": "GoviKey",
       "configuration": "debug",
-      "preLaunchTask": "swift: Build Debug VietKey"
+      "preLaunchTask": "swift: Build Debug GoviKey"
     },
     {
       "type": "swift",
       "request": "launch",
       "args": [],
-      "cwd": "${workspaceFolder:VietKey}",
-      "name": "Release VietKey",
-      "target": "VietKey",
+      "cwd": "${workspaceFolder:GoviKey}",
+      "name": "Release GoviKey",
+      "target": "GoviKey",
       "configuration": "release",
-      "preLaunchTask": "swift: Build Release VietKey"
+      "preLaunchTask": "swift: Build Release GoviKey"
     }
   ]
 }

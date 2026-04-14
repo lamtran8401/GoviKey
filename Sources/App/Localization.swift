@@ -119,7 +119,7 @@ enum L {
     static var platform: String           { loc("Nền tảng", "Platform") }
     static var architecture: String       { loc("Kiến trúc", "Architecture") }
 
-    // MARK: - Accessibility Alert
+    // MARK: - Accessibility Permission
 
     static var accessibilityTitle: String { loc("GoviKey cần quyền Accessibility", "GoviKey Needs Accessibility Permission") }
     static var accessibilityMessage: String { loc(
@@ -128,4 +128,27 @@ enum L {
     ) }
     static var openSystemSettings: String { loc("Mở Cài đặt hệ thống", "Open System Settings") }
     static var quit: String               { loc("Thoát", "Quit") }
+
+    // MARK: - Permission Window
+
+    static var permissionTitle: String { loc("Cấp quyền Accessibility", "Grant Accessibility Permission") }
+    static var permissionSubtitle: String { loc(
+        "GoviKey cần quyền Accessibility để gõ tiếng Việt.",
+        "GoviKey needs Accessibility permission to type Vietnamese."
+    ) }
+    static var permissionStep1: String { loc(
+        "Mở Cài đặt hệ thống → Quyền riêng tư & Bảo mật → Accessibility",
+        "Open System Settings → Privacy & Security → Accessibility"
+    ) }
+    static var permissionStep2: String { loc(
+        "Tìm GoviKey trong danh sách và bật lên",
+        "Find GoviKey in the list and enable it"
+    ) }
+    static var permissionStep3: String { loc(
+        "GoviKey sẽ tự động khởi động sau khi được cấp quyền",
+        "GoviKey will start automatically once permission is granted"
+    ) }
+    static var permissionWaiting: String { loc("Đang chờ quyền Accessibility...", "Waiting for Accessibility permission...") }
+    static var permissionGranted: String { loc("Đã cấp quyền! Sẵn sàng khởi động.", "Permission granted! Ready to start.") }
+    static var startGoviKey: String      { loc("Bắt đầu GoviKey", "Start GoviKey") }
 }
