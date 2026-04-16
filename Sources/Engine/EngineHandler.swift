@@ -29,7 +29,7 @@ extension VietnameseEngine {
     }
 
     func getEnglishLookupStateLength() -> Int {
-        var lookupLen = stateIdx
+        var lookupLen = rawStateLen
         while lookupLen > 0 {
             let kc = UInt16(keyStates[lookupLen - 1] & UInt32(CHAR_MASK))
             if isEnglishLetterKeyCode(kc) { break }
@@ -50,7 +50,7 @@ extension VietnameseEngine {
     // MARK: - Main Event Handler
 
     func vKeyHandleEvent(event: InputEvent, state: InputEventState, data: UInt16, capsStatus: UInt8, otherControlKey: Bool) {
-        if config.restoreOnEscape && idx > 0 && data == KEY_ESC {
+        if config.restoreOnEscape && bufferLen > 0 && data == KEY_ESC {
             if restoreToRawKeys() { return }
         }
 
@@ -58,7 +58,7 @@ extension VietnameseEngine {
         let isAutoRestoreBreakKey = isAutoRestoreWordBreak(event: event, state: state, data: data, capsStatus: capsStatus)
         let isBracketAutoRestore = isBracketPunctuationBreak(data) && getEnglishLookupStateLength() > 2
 
-        if (isNumberKey(data) && capsStatus == 1) || otherControlKey || isAutoRestoreBreakKey || isBracketAutoRestore || (idx == 0 && isNumberKey(data)) {
+        if (isNumberKey(data) && capsStatus == 1) || otherControlKey || isAutoRestoreBreakKey || isBracketAutoRestore || (bufferLen == 0 && isNumberKey(data)) {
             handleWordBreak(event: event, state: state, data: data, capsStatus: capsStatus, otherControlKey: otherControlKey, isAutoRestoreBreakKey: isAutoRestoreBreakKey || isBracketAutoRestore)
         } else if data == KEY_SPACE {
             handleSpace(state: state, data: data)
@@ -72,8 +72,8 @@ extension VietnameseEngine {
     // MARK: - Word Break Handler
 
     func handleWordBreak(event: InputEvent, state: InputEventState, data: UInt16, capsStatus: UInt8, otherControlKey: Bool, isAutoRestoreBreakKey: Bool) {
-        hCode = EngineAction.doNothing.rawValue
-        hBPC = 0; hNCC = 0; hExt = 1
+        actionCode = EngineAction.doNothing.rawValue
+        backspaceCount = 0; newCharCount = 0; extCode = 1
 
         if (config.quickStartConsonant || config.quickEndConsonant) &&
             !tempDisableKey && checkQuickConsonant() {
@@ -91,26 +91,26 @@ extension VietnameseEngine {
         } else {
             if spaceCount > 0 { saveWord(UInt32(KEY_SPACE), spaceCount); spaceCount = 0 } else { saveWord() }
             specialChar.append(UInt32(data) | (isCaps ? CAPS_MASK : 0))
-            hExt = 3
+            extCode = 3
         }
 
-        if hCode == EngineAction.doNothing.rawValue {
+        if actionCode == EngineAction.doNothing.rawValue {
             startNewSession(); willTempOffEngine = false
         }
     }
 
     func checkRestoreIfWrongSpelling(_ handleCode: Int32) -> Bool {
-        for ii in 0..<idx {
+        for ii in 0..<bufferLen {
             if !isConsonant(chr(ii)) &&
                ((typingWord[ii] & MARK_MASK) != 0 || (typingWord[ii] & TONE_MASK) != 0 || (typingWord[ii] & TONEW_MASK) != 0) {
-                hCode = handleCode
-                hBPC = idx
-                hNCC = stateIdx
-                for i in 0..<stateIdx {
+                actionCode = handleCode
+                backspaceCount = bufferLen
+                newCharCount = rawStateLen
+                for i in 0..<rawStateLen {
                     typingWord[i] = keyStates[i]
-                    hData[stateIdx - 1 - i] = typingWord[i]
+                    outputData[rawStateLen - 1 - i] = typingWord[i]
                 }
-                idx = stateIdx
+                bufferLen = rawStateLen
                 return true
             }
         }
@@ -127,20 +127,20 @@ extension VietnameseEngine {
             if config.restoreIfWrongSpelling && checkRestoreIfWrongSpelling(EngineAction.restore.rawValue) {
                 // Restore succeeded — the Space event will be consumed by EventRouter,
                 // so append the Space character to the output directly.
-                // hData is stored in reverse (index 0 = last char), so shift right and insert at 0.
-                if hNCC < hData.count {
-                    for j in stride(from: hNCC - 1, through: 0, by: -1) {
-                        hData[j + 1] = hData[j]
+                // outputData is stored in reverse (index 0 = last char), so shift right and insert at 0.
+                if newCharCount < outputData.count {
+                    for j in stride(from: newCharCount - 1, through: 0, by: -1) {
+                        outputData[j + 1] = outputData[j]
                     }
-                    hData[0] = UInt32(0x0020) | PURE_CHARACTER_MASK
-                    hNCC += 1
+                    outputData[0] = UInt32(0x0020) | PURE_CHARACTER_MASK
+                    newCharCount += 1
                 }
             } else {
-                hCode = EngineAction.doNothing.rawValue
+                actionCode = EngineAction.doNothing.rawValue
             }
             spaceCount += 1
         } else {
-            hCode = EngineAction.doNothing.rawValue; spaceCount += 1
+            actionCode = EngineAction.doNothing.rawValue; spaceCount += 1
         }
 
         if spaceCount == 1 {
@@ -152,7 +152,7 @@ extension VietnameseEngine {
     // MARK: - Delete Handler
 
     func handleDelete() {
-        hCode = EngineAction.doNothing.rawValue; hExt = 2; tempDisableKey = false
+        actionCode = EngineAction.doNothing.rawValue; extCode = 2; tempDisableKey = false
         if !specialChar.isEmpty {
             specialChar.removeLast()
             if specialChar.isEmpty { restoreLastTypingState() }
@@ -160,18 +160,18 @@ extension VietnameseEngine {
             spaceCount -= 1
             if spaceCount == 0 { restoreLastTypingState() }
         } else {
-            if stateIdx > 0 { stateIdx -= 1 }
-            if idx > 0 {
-                idx -= 1
+            if rawStateLen > 0 { rawStateLen -= 1 }
+            if bufferLen > 0 {
+                bufferLen -= 1
                 if !longWordHelper.isEmpty {
                     for i in stride(from: ENGINE_MAX_BUFF - 1, through: 1, by: -1) { typingWord[i] = typingWord[i - 1] }
                     typingWord[0] = longWordHelper.removeLast()
-                    idx += 1
+                    bufferLen += 1
                 }
                 if config.checkSpelling { checkSpelling() }
             }
-            hBPC = 0; hNCC = 0; hExt = 2
-            if idx == 0 {
+            backspaceCount = 0; newCharCount = 0; extCode = 2
+            if bufferLen == 0 {
                 startNewSession()
                 specialChar.removeAll(); restoreLastTypingState()
             } else {
@@ -183,96 +183,116 @@ extension VietnameseEngine {
     // MARK: - Main Flow Handler
 
     func handleMainFlow(state: InputEventState, data: UInt16, otherControlKey: Bool) {
-        if willTempOffEngine { hCode = EngineAction.doNothing.rawValue; hExt = 3; return }
+        guard !willTempOffEngine else { actionCode = EngineAction.doNothing.rawValue; extCode = 3; return }
 
+        flushPendingSessionState()
+        insertState(data, isCaps)
+
+        let shouldProcess = resolveSpellGate(data: data)
+        resetOutputState()
+        if shouldProcess {
+            handleMainKey(data, isCaps)
+        } else {
+            insertKey(data, isCaps)
+        }
+
+        postProcessKey(data)
+    }
+
+    // MARK: - Main Flow Helpers
+
+    private func flushPendingSessionState() {
         if spaceCount > 0 {
-            hBPC = 0; hNCC = 0; hExt = 0
+            backspaceCount = 0; newCharCount = 0; extCode = 0
             let savedSpaceCount = spaceCount
             startNewSession()
             saveWord(UInt32(KEY_SPACE), savedSpaceCount)
         } else if !specialChar.isEmpty {
             saveSpecialChar()
         }
+    }
 
-        insertState(data, isCaps)
+    private func resetOutputState() {
+        actionCode = EngineAction.doNothing.rawValue
+        backspaceCount = 0; newCharCount = 0; extCode = 3
+    }
 
-        // Spell gate
-        let allowMarkDespiteTempDisable = isMarkKey(data)
-        var allowVowelChangeDespiteTempDisable = false
-        if tempDisableKey && isSpecialKey(data) && !allowMarkDespiteTempDisable {
-            if isKeyDouble(data) || isKeyW(data) || isBracketKey(data) {
-                var hasToneOrDiacritic = false
-                for scan in 0..<idx where (typingWord[scan] & (MARK_MASK | TONE_MASK | TONEW_MASK)) != 0 {
-                    hasToneOrDiacritic = true; break
-                }
-                allowVowelChangeDespiteTempDisable = hasToneOrDiacritic
+    /// Returns true if the key should be processed as a Vietnamese special key.
+    private func resolveSpellGate(data: UInt16) -> Bool {
+        guard isSpecialKey(data) else { return false }
+        guard !unrecognizedConsonantStart || !isMarkKey(data) else { return false }
+        guard tempDisableKey else { return true }
+        return allowSpecialKeyDespiteDisable(data: data)
+    }
+
+    private func allowSpecialKeyDespiteDisable(data: UInt16) -> Bool {
+        let allowMark = isMarkKey(data)
+        var allowVowelChange = false
+
+        if !allowMark && (isKeyDouble(data) || isKeyW(data) || isBracketKey(data)) {
+            allowVowelChange = (0..<bufferLen).contains {
+                (typingWord[$0] & (MARK_MASK | TONE_MASK | TONEW_MASK)) != 0
             }
         }
-        var allowSpecialDespiteTempDisable = allowMarkDespiteTempDisable || allowVowelChangeDespiteTempDisable
-        if config.checkSpelling && allowSpecialDespiteTempDisable {
+
+        var allow = allowMark || allowVowelChange
+        if config.checkSpelling && allow {
             checkSpelling(forceCheckVowel: true)
-            if tempDisableKey && allowMarkDespiteTempDisable {
-                var hasToneWTransform = false
-                if idx > 0 {
-                    for scan in 0..<idx where (typingWord[scan] & TONEW_MASK) != 0 {
-                        hasToneWTransform = true; break
-                    }
-                }
-                let allowElongatedTonePlacement = canFixVowelWithDiacriticsForElongatedMark(data)
-                let allowToneOnInvalidVowel =
-                    spellingOK && !spellingVowelOK && canFixVowelWithDiacriticsForMark()
-                let allowToneOnInvalidEndConsonant = !spellingOK && spellingVowelOK && hasToneWTransform
-                let allowToneOnInvalid =
-                    allowToneOnInvalidVowel || allowToneOnInvalidEndConsonant ||
-                    hasToneWTransform || allowElongatedTonePlacement
-                if !allowToneOnInvalid { allowSpecialDespiteTempDisable = false }
+            if tempDisableKey && allowMark {
+                allow = canApplyMarkDespiteInvalidSpelling(data: data)
             }
         }
+        return allow
+    }
 
-        // Block tone marks on words with unrecognized consonant starts (English words).
-        // e.g. "featur" should not become "featủ" — r is blocked as a tone key.
-        let blockMarkForUnrecognizedStart = unrecognizedConsonantStart && isMarkKey(data)
+    private func canApplyMarkDespiteInvalidSpelling(data: UInt16) -> Bool {
+        let hasToneW = (0..<bufferLen).contains { (typingWord[$0] & TONEW_MASK) != 0 }
+        let allowOnInvalidVowel      = spellingOK && !spellingVowelOK && canFixVowelWithDiacriticsForMark()
+        let allowOnInvalidConsonant  = !spellingOK && spellingVowelOK && hasToneW
+        let allowElongated           = canFixVowelWithDiacriticsForElongatedMark(data)
+        return allowOnInvalidVowel || allowOnInvalidConsonant || hasToneW || allowElongated
+    }
 
-        if !isSpecialKey(data) || (tempDisableKey && !allowSpecialDespiteTempDisable) || blockMarkForUnrecognizedStart {
-            hCode = EngineAction.doNothing.rawValue; hBPC = 0; hNCC = 0; hExt = 3
-            insertKey(data, isCaps)
-        } else {
-            hCode = EngineAction.doNothing.rawValue; hBPC = 0; hNCC = 0; hExt = 3
-            handleMainKey(data, isCaps)
-        }
-
-        // Post
+    private func postProcessKey(_ data: UInt16) {
         if !isKeyD(data) {
-            if hCode == EngineAction.doNothing.rawValue { checkGrammar(deltaBackSpace: -1) } else { checkGrammar(deltaBackSpace: 0) }
+            let delta = actionCode == EngineAction.doNothing.rawValue ? -1 : 0
+            checkGrammar(deltaBackSpace: delta)
         }
 
-        if hCode == EngineAction.restore.rawValue {
-            let prevHNCC = hNCC
-            insertKey(data, isCaps)
-            // Include the newly typed key in the output so the display matches the buffer.
-            // e.g. 'đ' + 'd' → restore outputs 'dd' (not just 'd'), matching iOS Telex behavior.
-            if prevHNCC < hData.count {
-                for j in stride(from: prevHNCC - 1, through: 0, by: -1) {
-                    hData[j + 1] = hData[j]
-                }
-                hData[0] = get(typingWord[idx - 1])
-                hNCC = prevHNCC + 1
-            }
+        if actionCode == EngineAction.restore.rawValue {
+            appendRestoredKey(data)
         }
 
-        if isBracketKey(data) && (isBracketKey(UInt16(hData[0] & CHAR_MASK)) || false) {
-            if idx - (hCode == EngineAction.willProcess.rawValue ? hBPC : 0) > 0 {
-                idx -= 1; saveWord()
-            }
-            idx = 0; tempDisableKey = false; stateIdx = 0; hExt = 3
-            specialChar.append(UInt32(data) | (isCaps ? CAPS_MASK : 0))
+        if isBracketKey(data) && isBracketKey(UInt16(outputData[0] & CHAR_MASK)) {
+            commitBracketChar(data)
         }
+    }
+
+    private func appendRestoredKey(_ data: UInt16) {
+        // Include the newly typed key in the restore output so the display matches the
+        // buffer — e.g. 'đ' + 'd' → outputs 'dd', matching iOS Telex behaviour.
+        let prevCount = newCharCount
+        insertKey(data, isCaps)
+        guard prevCount < outputData.count else { return }
+        for j in stride(from: prevCount - 1, through: 0, by: -1) {
+            outputData[j + 1] = outputData[j]
+        }
+        outputData[0] = get(typingWord[bufferLen - 1])
+        newCharCount = prevCount + 1
+    }
+
+    private func commitBracketChar(_ data: UInt16) {
+        if bufferLen - (actionCode == EngineAction.willProcess.rawValue ? backspaceCount : 0) > 0 {
+            bufferLen -= 1; saveWord()
+        }
+        bufferLen = 0; tempDisableKey = false; rawStateLen = 0; extCode = 3
+        specialChar.append(UInt32(data) | (isCaps ? CAPS_MASK : 0))
     }
 
     // MARK: - Init
 
     func vKeyInit() {
-        idx = 0; stateIdx = 0
+        bufferLen = 0; rawStateLen = 0
         typingStatesData.removeAll(); typingStates.removeAll(); longWordHelper.removeAll()
     }
 }

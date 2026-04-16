@@ -10,55 +10,55 @@ extension VietnameseEngine {
     // MARK: - Vowel Operations
 
     func findAndCalculateVowel(forGrammar: Bool = false) {
-        vowelCount = 0; VSI = 0; VEI = 0
-        var iii = idx - 1
+        vowelCount = 0; vowelStart = 0; vowelEnd = 0
+        var iii = bufferLen - 1
         while iii >= 0 {
             if isConsonant(chr(iii)) {
                 if vowelCount > 0 { break }
             } else {
-                if vowelCount == 0 { VEI = iii }
+                if vowelCount == 0 { vowelEnd = iii }
                 if !forGrammar {
                     if (iii - 1 >= 0 && chr(iii) == KEY_I && chr(iii - 1) == KEY_G) ||
                        (iii - 1 >= 0 && chr(iii) == KEY_U && chr(iii - 1) == KEY_Q) { break }
                 }
-                VSI = iii; vowelCount += 1
+                vowelStart = iii; vowelCount += 1
             }
             iii -= 1
         }
-        if VSI - 1 >= 0 && chr(VSI) == KEY_U && chr(VSI - 1) == KEY_Q {
-            VSI += 1; vowelCount -= 1
+        if vowelStart - 1 >= 0 && chr(vowelStart) == KEY_U && chr(vowelStart - 1) == KEY_Q {
+            vowelStart += 1; vowelCount -= 1
         }
     }
 
     func removeMark() {
         findAndCalculateVowel(forGrammar: true)
-        isChanged = false
-        if idx > 0 {
-            for i in VSI...VEI {
+        didTransform = false
+        if bufferLen > 0 {
+            for i in vowelStart...vowelEnd {
                 if (typingWord[i] & MARK_MASK) != 0 {
-                    typingWord[i] &= ~MARK_MASK; isChanged = true
+                    typingWord[i] &= ~MARK_MASK; didTransform = true
                 }
             }
         }
-        if isChanged {
-            hCode = EngineAction.willProcess.rawValue; hBPC = 0
-            for i in stride(from: idx - 1, through: VSI, by: -1) {
-                hBPC += 1; hData[idx - 1 - i] = get(typingWord[i])
+        if didTransform {
+            actionCode = EngineAction.willProcess.rawValue; backspaceCount = 0
+            for i in stride(from: bufferLen - 1, through: vowelStart, by: -1) {
+                backspaceCount += 1; outputData[bufferLen - 1 - i] = get(typingWord[i])
             }
-            hNCC = hBPC
+            newCharCount = backspaceCount
         } else {
-            hCode = EngineAction.doNothing.rawValue
+            actionCode = EngineAction.doNothing.rawValue
         }
     }
 
     func canHasEndConsonant() -> Bool {
-        let vo = vnVowelCombine[chr(VSI)] ?? []
+        let vo = vnVowelCombine[chr(vowelStart)] ?? []
         for pattern in vo {
-            var kk = VSI
+            var kk = vowelStart
             var iii = 1
             while iii < pattern.count {
                 let tw = typingWord[kk]
-                if kk > VEI || (UInt32(chr(kk)) | (tw & TONE_MASK) | (tw & TONEW_MASK)) != pattern[iii] { break }
+                if kk > vowelEnd || (UInt32(chr(kk)) | (tw & TONE_MASK) | (tw & TONEW_MASK)) != pattern[iii] { break }
                 kk += 1; iii += 1
             }
             if iii >= pattern.count { return pattern[0] == 1 }
@@ -69,11 +69,11 @@ extension VietnameseEngine {
     // MARK: - Mark Handling Vowel Check
 
     func canFixVowelWithDiacriticsForMark() -> Bool {
-        let savedVowelCount = vowelCount, savedVSI = VSI, savedVEI = VEI
+        let savedVowelCount = vowelCount, savedVSI = vowelStart, savedVEI = vowelEnd
         findAndCalculateVowel()
-        defer { vowelCount = savedVowelCount; VSI = savedVSI; VEI = savedVEI }
+        defer { vowelCount = savedVowelCount; vowelStart = savedVSI; vowelEnd = savedVEI }
         guard vowelCount > 0 else { return false }
-        guard let patterns = vnVowelCombine[chr(VSI)] else { return false }
+        guard let patterns = vnVowelCombine[chr(vowelStart)] else { return false }
         for pattern in patterns {
             let patternLen = pattern.count - 1
             if patternLen < vowelCount { continue }
@@ -81,10 +81,10 @@ extension VietnameseEngine {
             for pIdx in 0..<vowelCount {
                 let expected = pattern[pIdx + 1]
                 let expectedBase = UInt16(expected & CHAR_MASK)
-                let currentBase = chr(VSI + pIdx)
+                let currentBase = chr(vowelStart + pIdx)
                 if currentBase != expectedBase { match = false; break }
                 let expectedTone = expected & (TONE_MASK | TONEW_MASK)
-                let currentTone = typingWord[VSI + pIdx] & (TONE_MASK | TONEW_MASK)
+                let currentTone = typingWord[vowelStart + pIdx] & (TONE_MASK | TONEW_MASK)
                 if expectedTone == 0 {
                     if currentTone != 0 { match = false; break }
                 } else {
@@ -99,30 +99,30 @@ extension VietnameseEngine {
     // MARK: - Character Lookup
 
     func checkCorrectVowel(_ charset: [[UInt16]], _ charsetIdx: Int, _ k: inout Int, _ markKey: UInt16) {
-        if idx >= 2 && chr(idx - 1) == KEY_U && chr(idx - 2) == KEY_Q { isCorect = false; return }
-        k = idx - 1
+        if bufferLen >= 2 && chr(bufferLen - 1) == KEY_U && chr(bufferLen - 2) == KEY_Q { patternMatched = false; return }
+        k = bufferLen - 1
         let quickEnd = config.quickEndConsonant
         let row = charset[charsetIdx]
         var j = row.count - 1
         while j >= 0 {
             let rc = row[j] & ~(quickEnd ? END_CONSONANT_MASK : 0)
-            if rc != chr(k) { isCorect = false; return }
+            if rc != chr(k) { patternMatched = false; return }
             k -= 1
             if k < 0 { break }
             j -= 1
         }
-        if isCorect && row.count > 1 && (isKeyF(markKey) || isKeyX(markKey) || isKeyR(markKey)) {
-            if row[1] == KEY_C || row[1] == KEY_T { isCorect = false; return }
-            if row.count > 2 && row[2] == KEY_T { isCorect = false; return }
+        if patternMatched && row.count > 1 && (isKeyF(markKey) || isKeyX(markKey) || isKeyR(markKey)) {
+            if row[1] == KEY_C || row[1] == KEY_T { patternMatched = false; return }
+            if row.count > 2 && row[2] == KEY_T { patternMatched = false; return }
         }
-        if isCorect && k >= 0 {
+        if patternMatched && k >= 0 {
             if chr(k) == chr(k + 1) &&
                (typingWord[k] & (TONE_MASK | TONEW_MASK)) == 0 &&
                (typingWord[k + 1] & (TONE_MASK | TONEW_MASK)) == 0 {
-                if isMarkKey(markKey) && k + 2 < idx && chr(k) == chr(k + 2) {
+                if isMarkKey(markKey) && k + 2 < bufferLen && chr(k) == chr(k + 2) {
                     // Allow triple vowels
                 } else {
-                    isCorect = false
+                    patternMatched = false
                 }
             }
         }

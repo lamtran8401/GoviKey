@@ -24,6 +24,7 @@ let package = Package(
             name: "App",
             dependencies: ["Engine", "EventTap"],
             path: "Sources/App",
+            exclude: ["Info.plist"],
             resources: [.process("Resources")]
         ),
         .testTarget(

@@ -22,22 +22,22 @@ public final class VietnameseEngine {
 
     // MARK: - Hook output state (internal, copied into EngineResult)
 
-    var hCode: Int32 = 0
-    var hExt: Int32 = 0
-    var hBPC: Int = 0
-    var hNCC: Int = 0
-    var hData: [UInt32] = Array(repeating: 0, count: ENGINE_MAX_BUFF)
+    var actionCode: Int32 = 0
+    var extCode: Int32 = 0
+    var backspaceCount: Int = 0
+    var newCharCount: Int = 0
+    var outputData: [UInt32] = Array(repeating: 0, count: ENGINE_MAX_BUFF)
 
     // MARK: - Core buffers
 
     var typingWord: [UInt32] = Array(repeating: 0, count: ENGINE_MAX_BUFF)
-    var idx: Int = 0
+    var bufferLen: Int = 0
     var longWordHelper: [UInt32] = []
     var typingStates: [[UInt32]] = []
     var typingStatesData: [UInt32] = []
 
     var keyStates: [UInt32] = Array(repeating: 0, count: ENGINE_MAX_BUFF)
-    var stateIdx: Int = 0
+    var rawStateLen: Int = 0
 
     var tempDisableKey: Bool = false
 
@@ -50,22 +50,22 @@ public final class VietnameseEngine {
     var spellingOK: Bool = false
     var spellingFlag: Bool = false
     var spellingVowelOK: Bool = false
-    var spellingEndIndex: Int = 0
+    var spellingBound: Int = 0
 
     // MARK: - Session-scoped vars
 
     var capsElem: Int = 0
     var markElem: Int = 0
     var keyVal: Int = 0
-    var isCorect: Bool = false
-    var isChanged: Bool = false
+    var patternMatched: Bool = false
+    var didTransform: Bool = false
     var vowelCount: Int = 0
-    var VSI: Int = 0
-    var VEI: Int = 0
-    var VWSM: Int = 0
-    var isRestoredW: Bool = false
-    var keyForAEO: UInt16 = 0
-    var isCheckedGrammar: Bool = false
+    var vowelStart: Int = 0
+    var vowelEnd: Int = 0
+    var markPosition: Int = 0
+    var wasWRestored: Bool = false
+    var vowelKey: UInt16 = 0
+    var grammarNormalized: Bool = false
     var isCaps: Bool = false
     var skipGrammarMarkNormalizationOnce: Bool = false
 
@@ -88,10 +88,10 @@ public final class VietnameseEngine {
         capsStatus: UInt8,
         otherControlKey: Bool
     ) -> EngineResult {
-        hCode = EngineAction.doNothing.rawValue
-        hExt = 0
-        hBPC = 0
-        hNCC = 0
+        actionCode = EngineAction.doNothing.rawValue
+        extCode = 0
+        backspaceCount = 0
+        newCharCount = 0
 
         vKeyHandleEvent(
             event: event,
@@ -187,16 +187,16 @@ public final class VietnameseEngine {
     // MARK: - Result builder
 
     func makeResult() -> EngineResult {
-        guard let action = EngineAction(rawValue: hCode) else {
+        guard let action = EngineAction(rawValue: actionCode) else {
             return .passThrough
         }
-        let count = max(hNCC, hBPC)
-        let dataCopy = count > 0 ? Array(hData.prefix(count)) : []
+        let count = max(newCharCount, backspaceCount)
+        let dataCopy = count > 0 ? Array(outputData.prefix(count)) : []
         return EngineResult(
             action: action,
-            extCode: hExt,
-            backspaceCount: hBPC,
-            newCharCount: hNCC,
+            extCode: extCode,
+            backspaceCount: backspaceCount,
+            newCharCount: newCharCount,
             data: dataCopy
         )
     }
@@ -209,16 +209,16 @@ public final class VietnameseEngine {
     }
 
     func insertKey(_ keyCode: UInt16, _ isCaps: Bool, _ isCheckSpelling: Bool = true) {
-        if idx >= ENGINE_MAX_BUFF {
+        if bufferLen >= ENGINE_MAX_BUFF {
             longWordHelper.append(typingWord[0])
             for i in 0..<(ENGINE_MAX_BUFF - 1) { typingWord[i] = typingWord[i + 1] }
             setKeyData(ENGINE_MAX_BUFF - 1, keyCode, isCaps)
         } else {
-            setKeyData(idx, keyCode, isCaps)
-            idx += 1
+            setKeyData(bufferLen, keyCode, isCaps)
+            bufferLen += 1
         }
         if config.checkSpelling && isCheckSpelling { checkSpelling() }
-        if keyCode == KEY_D && idx - 2 >= 0 && isConsonant(chr(idx - 2)) {
+        if keyCode == KEY_D && bufferLen - 2 >= 0 && isConsonant(chr(bufferLen - 2)) {
             tempDisableKey = false
         }
     }
@@ -233,17 +233,17 @@ public final class VietnameseEngine {
     }
 
     func insertState(_ keyCode: UInt16, _ isCaps: Bool) {
-        if stateIdx >= ENGINE_MAX_BUFF {
+        if rawStateLen >= ENGINE_MAX_BUFF {
             for i in 0..<(ENGINE_MAX_BUFF - 1) { keyStates[i] = keyStates[i + 1] }
             keyStates[ENGINE_MAX_BUFF - 1] = UInt32(keyCode) | (isCaps ? CAPS_MASK : 0)
         } else {
-            keyStates[stateIdx] = UInt32(keyCode) | (isCaps ? CAPS_MASK : 0)
-            stateIdx += 1
+            keyStates[rawStateLen] = UInt32(keyCode) | (isCaps ? CAPS_MASK : 0)
+            rawStateLen += 1
         }
     }
 
     func saveWord() {
-        if idx > 0 {
+        if bufferLen > 0 {
             if !longWordHelper.isEmpty {
                 typingStatesData.removeAll()
                 for (i, v) in longWordHelper.enumerated() {
@@ -257,7 +257,7 @@ public final class VietnameseEngine {
                 longWordHelper.removeAll()
             }
             typingStatesData.removeAll()
-            for i in 0..<idx { typingStatesData.append(typingWord[i]) }
+            for i in 0..<bufferLen { typingStatesData.append(typingWord[i]) }
             typingStates.append(typingStatesData)
         }
     }
@@ -282,14 +282,14 @@ public final class VietnameseEngine {
         let first = UInt16(typingStatesData[0] & CHAR_MASK)
         if first == KEY_SPACE {
             spaceCount = typingStatesData.count
-            idx = 0
+            bufferLen = 0
         } else if kCharKeyCode.contains(first) {
-            idx = 0
+            bufferLen = 0
             specialChar = typingStatesData
             checkSpelling()
         } else {
             for i in 0..<typingStatesData.count { typingWord[i] = typingStatesData[i] }
-            idx = typingStatesData.count
+            bufferLen = typingStatesData.count
             if config.checkSpelling {
                 checkSpelling()
             } else {
@@ -299,12 +299,12 @@ public final class VietnameseEngine {
     }
 
     func startNewSession() {
-        idx = 0
-        hBPC = 0
-        hNCC = 0
+        bufferLen = 0
+        backspaceCount = 0
+        newCharCount = 0
         tempDisableKey = false
         unrecognizedConsonantStart = false
-        stateIdx = 0
+        rawStateLen = 0
         skipGrammarMarkNormalizationOnce = false
         spaceCount = 0
         longWordHelper.removeAll()

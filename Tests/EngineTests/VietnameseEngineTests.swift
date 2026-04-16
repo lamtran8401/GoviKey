@@ -56,7 +56,7 @@ class EngineTestBase: XCTestCase {
     /// Render the current engine buffer as a Unicode string.
     func output() -> String {
         var chars: [UInt16] = []
-        for i in 0..<engine.idx {
+        for i in 0..<engine.bufferLen {
             let code = engine.getCharacterCode(engine.typingWord[i])
             if (code & CHAR_CODE_MASK) != 0 {
                 let v = UInt16(code & CHAR_MASK)
@@ -338,7 +338,7 @@ final class TelexBasicTests: EngineTestBase {
     func testNonSpecialKey_DoNothing() {
         let result = type("h")
         XCTAssertEqual(result.action, .doNothing)
-        XCTAssertEqual(engine.idx, 1)
+        XCTAssertEqual(engine.bufferLen, 1)
     }
 }
 
@@ -676,36 +676,56 @@ final class TelexSpellingTests: EngineTestBase {
     }
 }
 
-// MARK: - Telex Quick Telex Tests
+// MARK: - W Key Tests
 
-final class TelexQuickTelexTests: EngineTestBase {
+final class TelexWKeyTests: EngineTestBase {
 
-    func testQuickTelexCC() {
-        engine.config.quickTelex = true
-        type("c")
-        let r = type("c")
-        // cc → ch
-        XCTAssertEqual(r.action, .willProcess)
-        XCTAssertEqual(r.backspaceCount, 1)
-        XCTAssertEqual(r.newCharCount, 2)
-    }
-
-    func testQuickTelexGG() {
-        engine.config.quickTelex = true
-        type("g")
-        let r = type("g")
-        // gg → gi
-        XCTAssertEqual(r.action, .willProcess)
-        XCTAssertEqual(r.backspaceCount, 1)
-        XCTAssertEqual(r.newCharCount, 2)
-    }
-
-    func testQuickTelexDisabledDoesNotExpand() {
-        engine.config.quickTelex = false
-        type("c")
-        let r = type("c")
-        // Without quickTelex, cc = doNothing (both chars inserted raw)
+    func testEWIsLiteralNotUHorn() {
+        // "ew" must not produce "eư" — w is not a valid modifier for e
+        type("e")
+        let r = type("w")
         XCTAssertEqual(r.action, .doNothing)
+    }
+
+    func testNewIsLiteral() {
+        // "new" must stay as plain ASCII, no Vietnamese transform
+        type("n")
+        type("e")
+        let r = type("w")
+        XCTAssertEqual(r.action, .doNothing)
+    }
+
+    func testRepeatedWAfterEDoesNotCascade() {
+        // Pressing w repeatedly after e must not accumulate ư characters
+        type("e")
+        type("w")
+        type("w")
+        let r = type("w")
+        // All w presses are passthrough, never willProcess
+        XCTAssertEqual(r.action, .doNothing)
+    }
+
+    func testRepeatedWAloneStaysLiteral() {
+        // wwww must stay as plain w's, never producing ư mid-sequence
+        engine.config.wKeyAsLetter = false
+        engine.resetSession()
+        type("w"); type("w"); type("w")
+        let r = type("w")
+        XCTAssertEqual(r.action, .doNothing)
+    }
+
+    func testOWProducesOHorn() {
+        // "ow" is still a valid Telex transform → ơ
+        type("o")
+        let r = type("w")
+        XCTAssertEqual(r.action, .willProcess)
+    }
+
+    func testUWProducesUHorn() {
+        // "uw" is still a valid Telex transform → ư
+        type("u")
+        let r = type("w")
+        XCTAssertEqual(r.action, .willProcess)
     }
 }
 
@@ -715,38 +735,38 @@ final class TelexEngineStateTests: EngineTestBase {
 
     func testResetClearsBuffer() {
         type("abc")
-        XCTAssertEqual(engine.idx, 3)
+        XCTAssertEqual(engine.bufferLen, 3)
         engine.resetSession()
-        XCTAssertEqual(engine.idx, 0)
-        XCTAssertEqual(engine.stateIdx, 0)
+        XCTAssertEqual(engine.bufferLen, 0)
+        XCTAssertEqual(engine.rawStateLen, 0)
         XCTAssertFalse(engine.tempDisableKey)
     }
 
     func testDeleteDecreasesBuffer() {
         type("vie")
-        XCTAssertEqual(engine.idx, 3)
+        XCTAssertEqual(engine.bufferLen, 3)
         press(KEY_DELETE)
-        XCTAssertEqual(engine.idx, 2)
+        XCTAssertEqual(engine.bufferLen, 2)
     }
 
     func testDeleteOnEmptyBuffer() {
         let r = press(KEY_DELETE)
         XCTAssertEqual(r.action, .doNothing)
-        XCTAssertEqual(engine.idx, 0)
+        XCTAssertEqual(engine.bufferLen, 0)
     }
 
     func testWordBreakOnCommaResetsBuffer() {
         type("viet")
-        XCTAssertEqual(engine.idx, 4)
+        XCTAssertEqual(engine.bufferLen, 4)
         press(KEY_COMMA)
-        XCTAssertEqual(engine.idx, 0)
+        XCTAssertEqual(engine.bufferLen, 0)
     }
 
     func testWordBreakOnSpaceDoesNotResetIdx() {
-        // Space is handled separately; idx is not cleared until next non-space key
+        // Space is handled separately; bufferLen is not cleared until next non-space key
         type("viet")
         press(KEY_SPACE)
-        // Space increments spaceCount but does not clear idx immediately
+        // Space increments spaceCount but does not clear bufferLen immediately
         XCTAssertEqual(engine.spaceCount, 1)
     }
 
@@ -972,10 +992,10 @@ final class VNIBasicTests: EngineTestBase {
     // MARK: Number at start = word break
 
     func testNumberAtStartIsWordBreak() {
-        // If idx == 0 and we type a number, it is treated as a word break (passthrough)
+        // If bufferLen == 0 and we type a number, it is treated as a word break (passthrough)
         let r = press(KEY_1)
         XCTAssertEqual(r.action, .doNothing)
-        XCTAssertEqual(engine.idx, 0)
+        XCTAssertEqual(engine.bufferLen, 0)
     }
 }
 

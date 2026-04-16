@@ -48,7 +48,7 @@ final class CharacterEncodingTests: XCTestCase {
     /// encodings (TCVN3, VNI, CP1258) can be verified by byte value.
     func rawCodes() -> [UInt16] {
         var codes: [UInt16] = []
-        for i in 0..<engine.idx {
+        for i in 0..<engine.bufferLen {
             let code = engine.getCharacterCode(engine.typingWord[i])
             if (code & CHAR_CODE_MASK) != 0 {
                 let val = UInt16(code & CHAR_MASK)
